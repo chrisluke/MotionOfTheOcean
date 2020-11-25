@@ -1,4 +1,4 @@
-# Motion Of The Ocean - Deep Learning Project
+# Motion Of The Ocean - Deep Learning Project 
 
 Code accompanying the SIGGRAPH 2018 paper:
 "DeepMimic: Example-Guided Deep Reinforcement Learning of Physics-Based Character Skills".
