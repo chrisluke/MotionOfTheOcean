@@ -1,7 +1,6 @@
 import time
 import os
 import inspect
-print("parentdir=", parentdir)
 import json
 from learning.rl_world import RLWorld
 from learning.ppo_agent import PPOAgent
