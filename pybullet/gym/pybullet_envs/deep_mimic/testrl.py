@@ -2,6 +2,7 @@ import time
 import os
 import inspect
 currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
+print("currentdir=", currentdir)
 parentdir = os.path.dirname(os.path.dirname(currentdir))
 os.sys.path.insert(0, parentdir)
 print("parentdir=", parentdir)
