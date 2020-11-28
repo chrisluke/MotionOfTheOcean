@@ -1,8 +1,5 @@
 import os, inspect
 import math
-currentdir = os.path.dirname(os.path.abspath(inspect.getfile(inspect.currentframe())))
-parentdir = os.path.dirname(os.path.dirname(currentdir))
-# os.sys.path.insert(0, parentdir)
 
 from pybullet_utils.bullet_client import BulletClient
 import pybullet_data
