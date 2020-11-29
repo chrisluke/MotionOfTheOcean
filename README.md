@@ -32,7 +32,8 @@ the policy you want to run with `--model_file`. Make sure that the reference mot
 corresponds to the motion that your policy was trained for, otherwise the policy will not run properly.
 
 ## Running Pre-Trained Models:
-Once you have installed the dependencies, you can run a bunch of pre-trained models. For example, you can run a pre-trained humanoid model that jumps by using the command: 
+Once you have installed the dependencies, you can run a bunch of pre-trained models. For example, you 
+can run a pre-trained humanoid model that jumps by using the command: 
 
 ```
 python3 testrl.py --arg_file run_humanoid3d_walk_args.txt
@@ -40,10 +41,12 @@ python3 testrl.py --arg_file run_humanoid3d_walk_args.txt
 
 Note: In order for the library to work properly, you need to make sure you are using Tensorflow 1.14.
 
-##Running Visualizer on Our Own Models:
+## Running Visualizer on Our Own Models:
 Copy the model from the output folder to ``data/policies/humanoid3d``. 
 
-Rename the file you just added to match that of the pre-trained model (such as ``humanoid3d_walk.ckpt.index`` and ``humanoid3d_walk.ckpt.data-00000-of-00001``). Now you can run the visualizer with the same command as you would have used for the pre-trained models:
+Rename the file you just added to match that of the pre-trained model (such as ``humanoid3d_walk.ckpt.index`` 
+and ``humanoid3d_walk.ckpt.data-00000-of-00001``). Now you can run the visualizer with the same command as you 
+would have used for the pre-trained models:
 
 ``` 
 python3 testrl.py --arg_file run_humanoid3d_walk_args.txt
@@ -57,10 +60,10 @@ python3 testrl.py --arg_file run_humanoid3d_walk_args.txt
 - pressing space will pause/resume the simulation
 
 ## Motion capture Data
-Motion capture data can be found in `data/motions/`.  The motion files follow the JSON format. The `"Loop"` field specifies whether or not the motion is cyclic.
-`"wrap"` specifies a cyclic motion that will wrap back to the start at the end, while `"none"` specifies an
-acyclic motion that will stop once it reaches the end of the motion. Each vector in the `"Frames"` list
-specifies a keyframe in the motion. Each frame has the following format:
+Motion capture data can be found in `data/motions/`.  The motion files follow the JSON format. The `"Loop"` field 
+specifies whether or not the motion is cyclic.`"wrap"` specifies a cyclic motion that will wrap back to the start 
+at the end, while `"none"` specifies an acyclic motion that will stop once it reaches the end of the motion. Each 
+vector in the `"Frames"` list specifies a keyframe in the motion. Each frame has the following format:
 ```
 [
 	duration of frame in seconds (1D),
