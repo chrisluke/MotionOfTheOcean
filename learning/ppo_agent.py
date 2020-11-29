@@ -5,7 +5,7 @@ try:
 except Exception:
   import tensorflow as tf
 
-from learning.pg_agent import PGAgent
+from pybullet_envs.deep_mimic.learning.pg_agent import PGAgent
 from learning.solvers.mpi_solver import MPISolver
 import learning.tf_util as TFUtil
 import learning.rl_util as RLUtil
@@ -234,6 +234,7 @@ class PPOAgent(PGAgent):
       np.random.shuffle(exp_idx)
 
       for b in range(mini_batches):
+        print("you da best")
         batch_idx_beg = b * self._local_mini_batch_size
         batch_idx_end = batch_idx_beg + self._local_mini_batch_size
 

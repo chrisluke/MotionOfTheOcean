@@ -13,7 +13,7 @@ else:
 from enum import Enum
 
 from learning.path import *
-from learning.exp_params import ExpParams
+from pybullet_envs.deep_mimic.learning.exp_params import ExpParams
 from learning.normalizer import Normalizer
 from learning.replay_buffer import ReplayBuffer
 from pybullet_utils.logger import Logger

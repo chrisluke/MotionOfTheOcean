@@ -253,7 +253,6 @@ class PyBulletDeepMimicEnv(Env):
   def calc_reward(self, agent_id):
     kinPose = self._humanoid.computePose(self._humanoid._frameFraction)
     reward = getRewardCustom(kinPose,self._humanoid)
-    print("bye")
     return reward
 
   def set_action(self, agent_id, action):
