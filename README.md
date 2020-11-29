@@ -5,7 +5,9 @@ Use reinforcement learning to train a simulated humanoid to imitate a variety of
 
 ## Dependencies
 ``pip3 install gast==0.2.2``
+
 ``pip3 install pybullet``
+
 ``pip install tensorflow==1.14``
 
 ``OpenGL >= 3.2``
@@ -46,41 +48,6 @@ Rename the file you just added to match that of the pre-trained model (such as `
 ``` 
 python3 testrl.py --arg_file run_humanoid3d_walk_args.txt
 ```
-
-
-
-
-
-
-
-## How to Use
-Once the python wrapper has been built, training is done entirely in python using Tensorflow.
-`DeepMimic.py` runs the visualizer used to view the simulation. Training is done with `mpi_run.py`, 
-which uses MPI to parallelize training across multiple processes.
-
-`DeepMimic.py` is run by specifying an argument file that provides the configurations for a scene.
-For example,
-```
-python DeepMimic.py --arg_file args/run_humanoid3d_spinkick_args.txt
-```
-
-will run a pre-trained policy for a spinkick. Similarly,
-```
-python DeepMimic.py --arg_file args/play_motion_humanoid3d_args.txt
-```
-
-will load and play a mocap clip. To run a pre-trained policy for a simulated dog, use this command
-```
-python DeepMimic.py --arg_file args/run_dog3d_pace_args.txt
-```
-
-To train a policy, use `mpi_run.py` by specifying an argument file and the number of worker processes.
-For example,
-```
-python mpi_run.py --arg_file args/train_humanoid3d_spinkick_args.txt --num_workers 4
-```
-
-
 
 
 ## Interface
