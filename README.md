@@ -10,6 +10,8 @@ Use reinforcement learning to train a simulated humanoid to imitate a variety of
 
 ``pip install tensorflow==1.14``
 
+``pip install pandas``
+
 ``OpenGL >= 3.2``
 
 ## Training Models:
