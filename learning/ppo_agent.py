@@ -12,6 +12,7 @@ from pybullet_utils.logger import Logger
 import pybullet_utils.mpi_util as MPIUtil
 import pybullet_utils.math_util as MathUtil
 from pybullet_envs.deep_mimic.env.env import Env
+
 '''
 Proximal Policy Optimization Agent
 '''
@@ -102,6 +103,35 @@ class PPOAgent(PGAgent):
                                                       std_tf=self.norm_a_std_tf)
 
     return
+  
+  def _build_net_actor(self, net_name, init_output_scale):
+        norm_s_tf = self.s_norm.normalize_tf(self.s_tf)
+        input_tfs = [norm_s_tf]
+        if (self.has_goal()):
+            norm_g_tf = self.g_norm.normalize_tf(self.g_tf)
+            input_tfs += [norm_g_tf]
+        
+        h = build_net(net_name, input_tfs)
+        norm_a_tf = tf.layers.dense(inputs=h, units=self.get_action_size(), activation=None,
+                                kernel_initializer=tf.random_uniform_initializer(minval=-init_output_scale, maxval=init_output_scale))
+        
+        a_tf = self.a_norm.unnormalize_tf(norm_a_tf)
+        return a_tf
+    
+  def _build_net_critic(self, net_name):
+        norm_s_tf = self.s_norm.normalize_tf(self.s_tf)
+        input_tfs = [norm_s_tf]
+        if (self.has_goal()):
+            norm_g_tf = self.g_norm.normalize_tf(self.g_tf)
+            input_tfs += [norm_g_tf]
+        
+        h = build_net(net_name, input_tfs)
+        norm_val_tf = tf.layers.dense(inputs=h, units=1, activation=None,
+                                kernel_initializer=TFUtil.xavier_initializer);
+
+        norm_val_tf = tf.reshape(norm_val_tf, [-1])
+        val_tf = self.val_norm.unnormalize_tf(norm_val_tf)
+        return val_tf
 
   def _build_losses(self, json_data):
     actor_weight_decay = 0 if (
@@ -401,3 +431,18 @@ def compute_return(rewards, gamma, td_lambda, val_t):
     return_t[i] = curr_val
 
   return return_t
+
+def build_net(net_name, input_tfs, reuse=False):
+  net = None
+
+  if (net_name == "fc_2layers_1024units"):
+    layers = [1024, 512]
+    activation = tf.nn.relu
+
+    input_tf = tf.concat(axis=-1, values=input_tfs)
+    net = TFUtil.fc_net(input_tf, layers, activation=activation, reuse=reuse)
+    net = activation(net)
+  else:
+    assert False, 'Unsupported net: ' + net_name
+
+  return net
