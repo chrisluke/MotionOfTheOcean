@@ -1,124 +1,56 @@
 # Motion Of The Ocean - Deep Learning Project 
 
-Code accompanying the SIGGRAPH 2018 paper:
-"DeepMimic: Example-Guided Deep Reinforcement Learning of Physics-Based Character Skills".
-The framework uses reinforcement learning to train a simulated humanoid to imitate a variety
-of motion skills from mocap data.
+Use reinforcement learning to train a simulated humanoid to imitate a variety of motion skills from motioncapture data.
 
-Project page: https://xbpeng.github.io/projects/DeepMimic/index.html
-
-![Skills](images/teaser.png)
 
 ## Dependencies
+``pip3 install gast==0.2.2``
+``pip3 install pybullet``
+``pip install tensorflow==1.14``
 
-``sudo apt install libgl1-mesa-dev libx11-dev libxrandr-dev libxi-dev``
+``OpenGL >= 3.2``
 
-``sudo apt install mesa-utils``
+## Training Models:
+To train a policy, use `mpi_run.py` by specifying an argument file and the number of worker processes.
+For example,
+```
+python3 mpi_run.py --arg_file train_humanoid3d_walk_args.txt --num_workers 16
+```
+will train a policy to perform a spinkick using 4 workers. As training progresses, it will regularly
+print out statistics and log them to `output/` along with a `.ckpt` of the latest policy.
+It typically takes about 60 millions samples to train one policy, which can take a day
+when training with 16 workers. 16 workers is likely the max number of workers that the
+framework can support, and it can get overwhelmed if too many workers are used.
 
-``sudo apt install clang``
+A number of argument files are already provided in `args/` for the different skills. 
+`train_[something]_args.txt` files are setup for `mpi_run.py` to train a policy, and 
+`run_[something]_args.txt` files are setup for `DeepMimic.py` to run one of the pretrained policies.
+To run your own policies, take one of the `run_[something]_args.txt` files and specify
+the policy you want to run with `--model_file`. Make sure that the reference motion `--motion_file`
+corresponds to the motion that your policy was trained for, otherwise the policy will not run properly.
 
-``sudo apt install cmake``
+## Running Pre-Trained Models:
+Once you have installed the dependencies, you can run a bunch of pre-trained models. For example, you can run a pre-trained humanoid model that jumps by using the command: 
 
-C++:
+```
+python3 testrl.py --arg_file run_humanoid3d_walk_args.txt
+```
 
-- Bullet 2.88 (https://github.com/bulletphysics/bullet3/releases)
+Note: In order for the library to work properly, you need to make sure you are using Tensorflow 1.14.
 
-  Download Bullet 2.88 from the above link and install using the following commands.
-  
-	``./build_cmake_pybullet_double.sh``
-	
-	``cd build_cmake``
-	
-	``sudo make install``
+##Running Visualizer on Our Own Models:
+Copy the model from the output folder to ``data/policies/humanoid3d``. 
 
-- Eigen (http://www.eigen.tuxfamily.org/index.php?title=Main_Page) (Version : 3.3.7)
+Rename the file you just added to match that of the pre-trained model (such as ``humanoid3d_walk.ckpt.index`` and ``humanoid3d_walk.ckpt.data-00000-of-00001``). Now you can run the visualizer with the same command as you would have used for the pre-trained models:
 
-	``mkdir build``
-	
-	``cmake ..``
-	
-	``sudo make install``
-
-- OpenGL >= 3.2
-- freeglut (http://freeglut.sourceforge.net/) ( Version : 3.0.0 )
-
-	``cmake .``
-	
-	``make``
-	
-	``sudo make install``
-  
-- glew (http://glew.sourceforge.net/) ( Version : 2.1.0 )
-
-	``make``
-	
-	``sudo make install``
-	
-	``make clean``
-
-Misc:
-
-- SWIG (http://www.swig.org/) ( Version : 4.0.0 )
-
-	``./configure --without-pcre``
-	
-	``make``
-	
-	``sudo make install``
-
-- MPI 
-	- Windows: https://docs.microsoft.com/en-us/message-passing-interface/microsoft-mpi
-	- Linux: `sudo apt install libopenmpi-dev`
+``` 
+python3 testrl.py --arg_file run_humanoid3d_walk_args.txt
+```
 
 
-Python:
-
-- Python 3
-- PyOpenGL (http://pyopengl.sourceforge.net/) 
-
-``pip install PyOpenGL PyOpenGL_accelerate``
-
-- Tensorflow (https://www.tensorflow.org/) ( Vesrion : 1.13.1 )
-
-``pip install tensorflow`` 
-- MPI4Py (https://mpi4py.readthedocs.io/en/stable/install.html)
-
-``pip install mpi4py``
-
-## Build
-The simulated environments are written in C++, and the python wrapper is built using SWIG.
-Note that MPI must be installed before MPI4Py. When building Bullet, be sure to disable double precision with the build flag `USE_DOUBLE_PRECISION=OFF`.
-
-### Windows
-The wrapper is built using `DeepMimicCore.sln`.
-
-1. Select the `x64` configuration from the configuration manager.
-
-2. Under the project properties for `DeepMimicCore` modify `Additional Include Directories` to specify
-	- Bullet source directory
-	- Eigen include directory
-	- python include directory
-
-3. Modify `Additional Library Directories` to specify
-	- Bullet lib directory
-	- python lib directory
-
-4. Build `DeepMimicCore` project with the `Release_Swig` configuration and this should
-generate `DeepMimicCore.py` in `DeepMimicCore/`.
 
 
-### Linux
-1. Modify the `Makefile` in `DeepMimicCore/` by specifying the following,
-	- `EIGEN_DIR`: Eigen include directory
-	- `BULLET_INC_DIR`: Bullet source directory
-	- `PYTHON_INC`: python include directory
-	- `PYTHON_LIB`: python lib directory
 
-2. Build wrapper,
-	```
-	make python
-	```
-This should generate `DeepMimicCore.py` in `DeepMimicCore/`
 
 
 ## How to Use
@@ -148,22 +80,10 @@ For example,
 python mpi_run.py --arg_file args/train_humanoid3d_spinkick_args.txt --num_workers 4
 ```
 
-will train a policy to perform a spinkick using 4 workers. As training progresses, it will regularly
-print out statistics and log them to `output/` along with a `.ckpt` of the latest policy.
-It typically takes about 60 millions samples to train one policy, which can take a day
-when training with 16 workers. 16 workers is likely the max number of workers that the
-framework can support, and it can get overwhelmed if too many workers are used.
 
-A number of argument files are already provided in `args/` for the different skills. 
-`train_[something]_args.txt` files are setup for `mpi_run.py` to train a policy, and 
-`run_[something]_args.txt` files are setup for `DeepMimic.py` to run one of the pretrained policies.
-To run your own policies, take one of the `run_[something]_args.txt` files and specify
-the policy you want to run with `--model_file`. Make sure that the reference motion `--motion_file`
-corresponds to the motion that your policy was trained for, otherwise the policy will not run properly.
 
 
 ## Interface
-- the plot on the top-right shows the predictions of the value function
 - right click and drag will pan the camera
 - left click and drag will apply a force on the character at a particular location
 - scrollwheel will zoom in/out
@@ -174,7 +94,7 @@ corresponds to the motion that your policy was trained for, otherwise the policy
 - pressing '>' will step the simulation one step at a time
 
 
-## Mocap Data
+## Motion capture Data
 Mocap clips are located in `data/motions/`. To play a clip, first modify 
 `args/play_motion_humanoid3d_args.txt` and specify the file to play with
 `--motion_file`, then run
@@ -210,14 +130,3 @@ Positions are specified in meters, 3D rotations for spherical joints are specifi
 and 1D rotations for revolute joints (e.g. knees and elbows) are represented with a scalar rotation in radians. The root
 positions and rotations are in world coordinates, but all other joint rotations are in the joint's local coordinates.
 To use your own motion clip, convert it to a similar style JSON file.
-
-## Possible Issues and Solutions
-
-ImportError: libGLEW.so.2.1: cannot open shared object file: No such file or directory
-search for libGLEW.so.2.1 and use the following command accordingly
-ln /path/to/libGLEW.so.2.1 /usr/lib/x86----/libGLEW.so.2.1
-ln /path/to/libGLEW.so.2.1.0 /usr/lib/x86----/libGLEW.so.2.1.0
-
-ImportError: libBulletDynamics.so.2.88: cannot open shared object file: No such file or directory
-export LD_LIBRARY_PATH=/usr/local/lib/ ( can be temporary when run in terminal) 
-(libBullet file are present in that path - gets installed in that path after the command sudo make install while installing Bullet)
