@@ -12,7 +12,7 @@ import learning.rl_util as RLUtil
 from pybullet_utils.logger import Logger
 import pybullet_utils.mpi_util as MPIUtil
 import pybullet_utils.math_util as MathUtil
-from env.env import Env
+from pybullet_envs.deep_mimic.env.env import Env
 '''
 Proximal Policy Optimization Agent
 '''

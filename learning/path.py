@@ -1,5 +1,5 @@
 import numpy as np
-from env.env import Env
+from pybullet_envs.deep_mimic.env.env import Env
 
 
 class Path(object):
