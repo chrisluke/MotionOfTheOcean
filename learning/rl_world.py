@@ -1,9 +1,10 @@
 import numpy as np
-import learning.agent_builder as AgentBuilder
 import learning.tf_util as TFUtil
 from learning.rl_agent import RLAgent
 from pybullet_utils.logger import Logger
 import os
+import json
+from learning.ppo_agent import PPOAgent
 
 
 class RLWorld(object):
@@ -138,7 +139,17 @@ class RLWorld(object):
     if (agent_file == 'none'):
       agent = None
     else:
-      agent = AgentBuilder.build_agent(self, id, agent_file)
-      assert (agent != None), 'Failed to build agent {:d} from: {}'.format(id, agent_file)
+      AGENT_TYPE_KEY = "AgentType"
+      agent = None
+      with open(os.getcwd() + "/" + agent_file) as data_file:
+        json_data = json.load(data_file)
 
+        assert AGENT_TYPE_KEY in json_data
+        agent_type = json_data[AGENT_TYPE_KEY]
+
+        if (agent_type == PPOAgent.NAME):
+          agent = PPOAgent(self, id, json_data)
+        else:
+          assert False, 'Unsupported agent type: ' + agent_type
+      assert (agent != None), 'Failed to build agent {:d} from: {}'.format(id, agent_file)
     return agent
