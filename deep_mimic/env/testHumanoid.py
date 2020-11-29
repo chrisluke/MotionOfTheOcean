@@ -3,10 +3,11 @@ import time
 import math
 import motion_capture_data
 from env import humanoid_stable_pd
-import pybullet_data
 import pybullet as p1
 import humanoid_pose_interpolator
 import numpy as np
+import os
+import pybullet_data
 
 pybullet_client = bullet_client.BulletClient(connection_mode=p1.GUI)
 
@@ -25,8 +26,7 @@ pybullet_client.setGravity(0, -9.8, 0)
 pybullet_client.setPhysicsEngineParameter(numSolverIterations=10)
 
 mocapData = motion_capture_data.MotionCaptureData()
-#motionPath = pybullet_data.getDataPath()+"/data/motions/humanoid3d_walk.txt"
-motionPath = pybullet_data.getDataPath() + "/data/motions/humanoid3d_backflip.txt"
+motionPath = os.getcwd() + "/data/motions/humanoid3d_backflip.txt"
 mocapData.Load(motionPath)
 timeStep = 1. / 600
 useFixedBase = False

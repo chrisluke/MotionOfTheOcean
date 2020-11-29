@@ -1,8 +1,7 @@
 import os, inspect
 import math
-
-from pybullet_utils.bullet_client import BulletClient
 import pybullet_data
+from pybullet_utils.bullet_client import BulletClient
 
 jointTypes = [
     "JOINT_REVOLUTE", "JOINT_PRISMATIC", "JOINT_SPHERICAL", "JOINT_PLANAR", "JOINT_FIXED"

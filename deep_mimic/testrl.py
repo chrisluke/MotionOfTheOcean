@@ -5,7 +5,6 @@ import json
 from learning.rl_world import RLWorld
 from learning.ppo_agent import PPOAgent
 
-import pybullet_data
 from pybullet_utils.arg_parser import ArgParser
 from pybullet_utils.logger import Logger
 from env.pybullet_deep_mimic_env import PyBulletDeepMimicEnv
@@ -47,7 +46,7 @@ def build_arg_parser(args):
   if arg_file == '':
     arg_file = "run_humanoid3d_backflip_args.txt"
   if (arg_file != ''):
-    path = pybullet_data.getDataPath() + "/args/" + arg_file
+    path = os.getcwd() + "/args/" + arg_file
     succ = arg_parser.load_file(path)
     Logger.print2(arg_file)
     assert succ, Logger.print2('Failed to load args from: ' + arg_file)
@@ -70,7 +69,7 @@ def build_world(args, enable_draw):
   print("bodies=", bodies)
   int_output_path = arg_parser.parse_string("int_output_path")
   print("int_output_path=", int_output_path)
-  agent_files = pybullet_data.getDataPath() + "/" + arg_parser.parse_string("agent_files")
+  agent_files = os.getcwd() + "/" + arg_parser.parse_string("agent_files")
 
   AGENT_TYPE_KEY = "AgentType"
 

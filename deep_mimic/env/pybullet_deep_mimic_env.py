@@ -6,6 +6,7 @@ from pybullet_utils import bullet_client
 import time
 from env import motion_capture_data
 from env import humanoid_stable_pd
+import os
 import pybullet_data
 import pybullet as p1
 import random
@@ -61,8 +62,7 @@ class PyBulletDeepMimicEnv(Env):
       motion_file = self._arg_parser.parse_strings('motion_file')
       print("motion_file=", motion_file[0])
 
-      motionPath = pybullet_data.getDataPath() + "/" + motion_file[0]
-      #motionPath = pybullet_data.getDataPath()+"/motions/humanoid3d_backflip.txt"
+      motionPath = os.getcwd() + "/" + motion_file[0]
       print("motionPath: ",motionPath)
       self._mocapData.Load(motionPath)
       timeStep = self.timeStep

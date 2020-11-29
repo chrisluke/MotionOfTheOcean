@@ -16,7 +16,6 @@ import numpy as np
 import time
 import subprocess
 import pybullet as p2
-import pybullet_data
 from pybullet_utils import bullet_client as bc
 from pkg_resources import parse_version
 from pybullet_envs.deep_mimic.env.pybullet_deep_mimic_env import PyBulletDeepMimicEnv, InitializationStrategy
@@ -45,7 +44,7 @@ class HumanoidDeepBulletEnv(gym.Env):
     Logger.print2("===========================================================")
     succ = False
     if (arg_file != ''):
-      path = pybullet_data.getDataPath() + "/args/" + arg_file
+      path = os.getcwd() + "/args/" + arg_file
       succ = self._arg_parser.load_file(path)
       Logger.print2(arg_file)
     assert succ, Logger.print2('Failed to load args from: ' + arg_file)

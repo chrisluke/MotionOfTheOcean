@@ -6,6 +6,7 @@ from pybullet_utils import bullet_client
 import time
 from env import motion_capture_data_multiclip
 from env import humanoid_stable_pd_multiclip
+import os
 import pybullet_data
 import pybullet as p1
 import random
@@ -64,7 +65,7 @@ class PyBulletDeepMimicEnvMultiClip(Env):
             print("motion_file=", motion_file[0])
             print("sdfjksdfkjsdfkdsf")
 
-            motionPath = pybullet_data.getDataPath() + "/" + motion_file[0]
+            motionPath = os.getcwd() + "/" + motion_file[0]
 
             self._mocapData.Load(motionPath)
             self._n_clips = self._mocapData.getNumClips()
