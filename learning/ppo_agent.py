@@ -383,6 +383,7 @@ class PPOAgent(RLAgent):
     critic_vars = self._tf_vars('main/critic')
     critic_opt = tf.train.MomentumOptimizer(learning_rate=critic_stepsize,
                                             momentum=critic_momentum)
+    # critic_opt = tf.keras.optimizers.SGD(learning_rate=critic_stepsize, momentum=critic_momentum)
     self.critic_grad_tf = tf.gradients(self.critic_loss_tf, critic_vars)
     self.critic_solver = MPISolver(self.sess, critic_opt, critic_vars)
 
@@ -396,6 +397,7 @@ class PPOAgent(RLAgent):
     actor_vars = self._tf_vars('main/actor')
     actor_opt = tf.train.MomentumOptimizer(learning_rate=self._actor_stepsize_tf,
                                            momentum=actor_momentum)
+    # actor_opt = tf.keras.optimizers.SGD(learning_rate=self._actor_stepsize_tf, momentum=actor_momentum)
     self.actor_grad_tf = tf.gradients(self.actor_loss_tf, actor_vars)
     self.actor_solver = MPISolver(self.sess, actor_opt, actor_vars)
 
