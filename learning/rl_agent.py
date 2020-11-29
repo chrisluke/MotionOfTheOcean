@@ -19,6 +19,7 @@ from pybullet_envs.deep_mimic.learning.replay_buffer import ReplayBuffer
 from pybullet_utils.logger import Logger
 import pybullet_utils.mpi_util as MPIUtil
 import pybullet_utils.math_util as MathUtil
+from custom_reward import getRewardCustom
 
 
 class RLAgent(ABC):
@@ -311,8 +312,9 @@ class RLAgent(ABC):
     return g
 
   def _record_reward(self):
-    r = self.world.env.calc_reward(self.id)
-    return r
+    kinPose = self.world.env._humanoid.computePose(self.world.env._humanoid._frameFraction)
+    reward = getRewardCustom(kinPose,self.world.env._humanoid)
+    return reward
 
   def _apply_action(self, a):
     self.world.env.set_action(self.id, a)

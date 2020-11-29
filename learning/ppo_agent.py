@@ -5,7 +5,7 @@ try:
 except Exception:
   import tensorflow as tf
 
-from pybullet_envs.deep_mimic.learning.pg_agent import PGAgent
+from learning.pg_agent import PGAgent
 from learning.solvers.mpi_solver import MPISolver
 import learning.tf_util as TFUtil
 from pybullet_utils.logger import Logger

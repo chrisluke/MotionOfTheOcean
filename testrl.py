@@ -7,9 +7,10 @@ from learning.ppo_agent import PPOAgent
 
 from pybullet_utils.arg_parser import ArgParser
 from pybullet_utils.logger import Logger
-from env.pybullet_deep_mimic_env import PyBulletDeepMimicEnv
+from pybullet_envs.deep_mimic.env.pybullet_deep_mimic_env import PyBulletDeepMimicEnv
 import sys
 import random
+from custom_reward import getRewardCustom
 
 update_timestep = 1. / 240.
 animating = True
@@ -20,7 +21,9 @@ steps = 0
 def update_world(world, time_elapsed):
   timeStep = update_timestep
   world.update(timeStep)
-  reward = world.env.calc_reward(agent_id=0)
+  kinPose = world.env._humanoid.computePose(world.env._humanoid._frameFraction)
+  reward = getRewardCustom(kinPose,world.env._humanoid)
+  # reward = world.env.calc_reward(agent_id=0)
   global total_reward
   total_reward += reward
   global steps
