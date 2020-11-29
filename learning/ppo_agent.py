@@ -367,6 +367,32 @@ class PPOAgent(PGAgent):
 
     return
   
+  def _update_new_action(self):
+        s = self._record_state()
+        g = self._record_goal()
+
+        if not (self._is_first_step()):
+            r = self._record_reward()
+            self.path.rewards.append(r)
+        
+        a, logp = self._decide_action(s=s, g=g)
+        assert len(np.shape(a)) == 1
+        assert len(np.shape(logp)) <= 1
+
+        flags = self._record_flags()
+        self._apply_action(a)
+
+        self.path.states.append(s)
+        self.path.goals.append(g)
+        self.path.actions.append(a)
+        self.path.logps.append(logp)
+        self.path.flags.append(flags)
+        
+        if self._enable_draw():
+            self._log_val(s, g)
+        
+        return
+
   def _train(self):
     samples = self.replay_buffer.total_count
     self._total_sample_count = int(MPIUtil.reduce_sum(samples))
