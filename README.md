@@ -57,14 +57,7 @@ python3 testrl.py --arg_file run_humanoid3d_walk_args.txt
 - pressing space will pause/resume the simulation
 
 ## Motion capture Data
-Mocap clips are located in `data/motions/`. To play a clip, first modify 
-`args/play_motion_humanoid3d_args.txt` and specify the file to play with
-`--motion_file`, then run
-```
-python DeepMimic.py --arg_file args/play_motion_humanoid3d_args.txt
-```
-
-The motion files follow the JSON format. The `"Loop"` field specifies whether or not the motion is cyclic.
+Motion capture data can be found in `data/motions/`.  The motion files follow the JSON format. The `"Loop"` field specifies whether or not the motion is cyclic.
 `"wrap"` specifies a cyclic motion that will wrap back to the start at the end, while `"none"` specifies an
 acyclic motion that will stop once it reaches the end of the motion. Each vector in the `"Frames"` list
 specifies a keyframe in the motion. Each frame has the following format:
