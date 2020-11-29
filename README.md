@@ -51,15 +51,10 @@ python3 testrl.py --arg_file run_humanoid3d_walk_args.txt
 
 
 ## Interface
-- right click and drag will pan the camera
+- ctrl + click and drag will pan the camera
 - left click and drag will apply a force on the character at a particular location
 - scrollwheel will zoom in/out
-- pressing 'r' will reset the episode
-- pressing 'l' will reload the argument file and rebuild everything
-- pressing 'x' will pelt the character with random boxes
 - pressing space will pause/resume the simulation
-- pressing '>' will step the simulation one step at a time
-
 
 ## Motion capture Data
 Mocap clips are located in `data/motions/`. To play a clip, first modify 
