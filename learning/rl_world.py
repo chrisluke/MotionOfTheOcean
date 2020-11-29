@@ -1,6 +1,6 @@
 import numpy as np
 import learning.tf_util as TFUtil
-from learning.rl_agent import RLAgent
+from pybullet_envs.deep_mimic.learning.rl_agent import RLAgent
 from pybullet_utils.logger import Logger
 import os
 import json

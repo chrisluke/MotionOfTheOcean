@@ -10,14 +10,12 @@ import pybullet_utils.math_util as MathUtil
 import pybullet_utils.mpi_util as MPIUtil
 from pybullet_utils.logger import Logger
 
-from learning.solvers.solver import Solver
 
-
-class MPISolver(Solver):
+class MPISolver():
   CHECK_SYNC_ITERS = 1000
 
   def __init__(self, sess, optimizer, vars):
-    super().__init__(vars)
+    self.vars = vars
     self.sess = sess
     self.optimizer = optimizer
     self._build_grad_feed(vars)

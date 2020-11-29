@@ -5,13 +5,14 @@ try:
 except Exception:
   import tensorflow as tf
 
-from learning.pg_agent import PGAgent
-from learning.solvers.mpi_solver import MPISolver
+from pybullet_envs.deep_mimic.learning.pg_agent import PGAgent
+from learning.mpi_solver import MPISolver
 import learning.tf_util as TFUtil
 from pybullet_utils.logger import Logger
 import pybullet_utils.mpi_util as MPIUtil
 import pybullet_utils.math_util as MathUtil
 from pybullet_envs.deep_mimic.env.env import Env
+from custom_reward import getRewardCustom
 
 '''
 Proximal Policy Optimization Agent
@@ -29,7 +30,13 @@ class PPOAgent(PGAgent):
   ACTOR_STEPSIZE_DECAY = "ActorStepsizeDecay"
 
   def __init__(self, world, id, json_data):
+
     super().__init__(world, id, json_data)
+    self._exp_action = False
+    self.tf_scope = 'agent'
+    # self.graph = tf.Graph()
+    # self.sess = tf.Session(graph=self.graph)
+
     return
 
   def _load_params(self, json_data):
@@ -56,6 +63,22 @@ class PPOAgent(PGAgent):
 
     self.replay_buffer_size = np.maximum(min_replay_size, self.replay_buffer_size)
 
+    return
+
+  def save_model(self, out_path):
+    with self.sess.as_default(), self.graph.as_default():
+      try:
+        save_path = self.saver.save(self.sess, out_path, write_meta_graph=False, write_state=False)
+        Logger.print2('Model saved to: ' + save_path)
+      except:
+        Logger.print2("Failed to save model to: " + save_path)
+    return
+
+  def load_model(self, in_path):
+    with self.sess.as_default(), self.graph.as_default():
+      self.saver.restore(self.sess, in_path)
+      self._load_normalizers()
+      Logger.print2('Model loaded from: ' + in_path)
     return
 
   def _build_nets(self, json_data):
@@ -170,6 +193,12 @@ class PPOAgent(PGAgent):
         tf.to_float(tf.greater(tf.abs(ratio_tf - 1.0), self.ratio_clip)))
 
     return
+  
+  def _weight_decay_loss(self, scope):
+    vars = self._tf_vars(scope)
+    vars_no_bias = [v for v in vars if 'bias' not in v.name]
+    loss = tf.add_n([tf.nn.l2_loss(v) for v in vars_no_bias])
+    return loss
 
   def _build_solvers(self, json_data):
     actor_stepsize = 0.001 if (
@@ -320,6 +349,87 @@ class PPOAgent(PGAgent):
 
     return
 
+  def update(self, timestep):
+    if self.need_new_action():
+      # print("update_new_action!!!")
+      self._update_new_action()
+
+    if (self._mode == self.Mode.TRAIN and self.enable_training):
+      self._update_counter += timestep
+
+      while self._update_counter >= self.update_period:
+        self._train()
+        self._update_exp_params()
+        self.world.env.set_sample_count(self._total_sample_count)
+        self._update_counter -= self.update_period
+
+    return
+  
+  def _train(self):
+    samples = self.replay_buffer.total_count
+    self._total_sample_count = int(MPIUtil.reduce_sum(samples))
+    end_training = False
+
+    if (self.replay_buffer_initialized):
+      if (self._valid_train_step()):
+        prev_iter = self.iter
+        iters = self._get_iters_per_update()
+        avg_train_return = MPIUtil.reduce_avg(self.train_return)
+
+        for i in range(iters):
+          curr_iter = self.iter
+          wall_time = time.time() - self.start_time
+          wall_time /= 60 * 60  # store time in hours
+
+          has_goal = self.has_goal()
+          s_mean = np.mean(self.s_norm.mean)
+          s_std = np.mean(self.s_norm.std)
+          g_mean = np.mean(self.g_norm.mean) if has_goal else 0
+          g_std = np.mean(self.g_norm.std) if has_goal else 0
+
+          self.logger.log_tabular("Iteration", self.iter)
+          self.logger.log_tabular("Wall_Time", wall_time)
+          self.logger.log_tabular("Samples", self._total_sample_count)
+          self.logger.log_tabular("Train_Return", avg_train_return)
+          self.logger.log_tabular("Test_Return", self.avg_test_return)
+          self.logger.log_tabular("State_Mean", s_mean)
+          self.logger.log_tabular("State_Std", s_std)
+          self.logger.log_tabular("Goal_Mean", g_mean)
+          self.logger.log_tabular("Goal_Std", g_std)
+          self._log_exp_params()
+
+          self._update_iter(self.iter + 1)
+          self._train_step()
+
+          Logger.print2("Agent " + str(self.id))
+          self.logger.print_tabular()
+          Logger.print2("")
+
+          if (self._enable_output() and curr_iter % self.int_output_iters == 0):
+            self.logger.dump_tabular()
+
+        if (prev_iter // self.int_output_iters != self.iter // self.int_output_iters):
+          end_training = self.enable_testing()
+
+    else:
+
+      Logger.print2("Agent " + str(self.id))
+      Logger.print2("Samples: " + str(self._total_sample_count))
+      Logger.print2("")
+
+      if (self._total_sample_count >= self.init_samples):
+        self.replay_buffer_initialized = True
+        end_training = self.enable_testing()
+
+    if self._need_normalizer_update:
+      self._update_normalizers()
+      self._need_normalizer_update = self.normalizer_samples > self._total_sample_count
+
+    if end_training:
+      self._init_mode_train_end()
+
+    return
+
   def _get_iters_per_update(self):
     return 1
 
@@ -414,6 +524,11 @@ class PPOAgent(PGAgent):
     }
     self.sess.run(self._actor_stepsize_update_op, feed)
     return
+  
+  def _record_reward(self):
+    kinPose = self.world.env._humanoid.computePose(self.world.env._humanoid._frameFraction)
+    reward = getRewardCustom(kinPose,self.world.env._humanoid)
+    return reward
 
 def compute_return(rewards, gamma, td_lambda, val_t):
   # computes td-lambda return of path
