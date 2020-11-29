@@ -8,7 +8,6 @@ except Exception:
 from pybullet_envs.deep_mimic.learning.pg_agent import PGAgent
 from learning.solvers.mpi_solver import MPISolver
 import learning.tf_util as TFUtil
-import learning.rl_util as RLUtil
 from pybullet_utils.logger import Logger
 import pybullet_utils.mpi_util as MPIUtil
 import pybullet_utils.math_util as MathUtil
@@ -333,7 +332,7 @@ class PPOAgent(PGAgent):
         r = rewards[idx0:idx1]
         v = val_buffer[idx0:(idx1 + 1)]
 
-        new_vals[idx0:idx1] = RLUtil.compute_return(r, self.discount, self.td_lambda, v)
+        new_vals[idx0:idx1] = compute_return(r, self.discount, self.td_lambda, v)
         curr_idx = idx1 + start_idx + 1
 
     return new_vals
@@ -385,3 +384,20 @@ class PPOAgent(PGAgent):
     }
     self.sess.run(self._actor_stepsize_update_op, feed)
     return
+
+def compute_return(rewards, gamma, td_lambda, val_t):
+  # computes td-lambda return of path
+  path_len = len(rewards)
+  assert len(val_t) == path_len + 1
+
+  return_t = np.zeros(path_len)
+  last_val = rewards[-1] + gamma * val_t[-1]
+  return_t[-1] = last_val
+
+  for i in reversed(range(0, path_len - 1)):
+    curr_r = rewards[i]
+    next_ret = return_t[i + 1]
+    curr_val = curr_r + gamma * ((1.0 - td_lambda) * val_t[i + 1] + td_lambda * next_ret)
+    return_t[i] = curr_val
+
+  return return_t
