@@ -51,7 +51,7 @@ class RLAgent(ABC):
     self.id = id
     self.logger = Logger()
     self._mode = self.Mode.TRAIN
-
+    print("heyyyyyysdf: ", self._check_action_space())
     assert self._check_action_space(), \
         Logger.print2("Invalid action space, got {:s}".format(str(self.get_action_space())))
 

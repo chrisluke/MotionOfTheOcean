@@ -41,7 +41,7 @@ def fc_net(input, layers_sizes, activation, reuse=None,
   curr_tf = input
   for i, size in enumerate(layers_sizes):
     with tf.variable_scope(str(i), reuse=reuse):
-      curr_tf = tf.keras.layers.Dense(
+      curr_tf = tf.layers.dense(inputs=curr_tf,
                                 units=size,
                                 kernel_initializer=xavier_initializer,
                                 activation=activation if i < len(layers_sizes) - 1 else None)

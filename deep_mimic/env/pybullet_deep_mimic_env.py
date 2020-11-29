@@ -63,6 +63,7 @@ class PyBulletDeepMimicEnv(Env):
 
       motionPath = pybullet_data.getDataPath() + "/" + motion_file[0]
       #motionPath = pybullet_data.getDataPath()+"/motions/humanoid3d_backflip.txt"
+      print("motionPath: ",motionPath)
       self._mocapData.Load(motionPath)
       timeStep = self.timeStep
       useFixedBase = False

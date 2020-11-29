@@ -31,7 +31,7 @@ def update_world(world, time_elapsed):
   #print("steps=",steps)
   end_episode = world.env.is_episode_end()
   if (end_episode or steps>= 1000):
-    print("total_reward=",total_reward)
+    print("total_reward adfkjdkfsdf =",total_reward)
     total_reward=0
     steps = 0
     world.end_episode()
@@ -65,7 +65,7 @@ def build_world(args, enable_draw):
   #world.env.set_playback_speed(playback_speed)
 
   motion_file = arg_parser.parse_string("motion_file")
-  print("motion_file=", motion_file)
+  print("motion_file build=", motion_file)
   bodies = arg_parser.parse_ints("fall_contact_bodies")
   print("bodies=", bodies)
   int_output_path = arg_parser.parse_string("int_output_path")

@@ -62,6 +62,7 @@ class PyBulletDeepMimicEnvMultiClip(Env):
 
             motion_file = self._arg_parser.parse_strings('motion_file')
             print("motion_file=", motion_file[0])
+            print("sdfjksdfkjsdfkdsf")
 
             motionPath = pybullet_data.getDataPath() + "/" + motion_file[0]
 

@@ -2,6 +2,7 @@ import sys
 import subprocess
 from pybullet_utils.arg_parser import ArgParser
 from pybullet_utils.logger import Logger
+from DeepMimic_Optimizer import call_opti_main 
 
 
 def main():
@@ -14,10 +15,8 @@ def main():
   assert (num_workers > 0)
 
   Logger.print2('Running with {:d} workers'.format(num_workers))
-  cmd = 'mpiexec -n {:d} python3 DeepMimic_Optimizer.py '.format(num_workers)
-  cmd += ' '.join(args)
-  Logger.print2('cmd: ' + cmd)
-  subprocess.call(cmd, shell=True)
+  call_opti_main() # start the training by calling the optimizer
+  # subprocess.call(cmd, shell=True)
   return
 
 
