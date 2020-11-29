@@ -1,17 +1,12 @@
 import numpy as np
-
-# TODO: delete tensorflow.compat.v1 import --> change to new tensorflow version
+import copy as copy
 try:
   import tensorflow.compat.v1 as tf
 except Exception:
   import tensorflow as tf
 
-from pybullet_envs.deep_mimic.learning.tf_normalizer import TFNormalizer
-import pybullet_envs.deep_mimic.learning.rl_util as RLUtil
-from pybullet_envs.deep_mimic.env.action_space import ActionSpace
-import copy as copy
-
 import time
+from pybullet_envs.deep_mimic.learning.pg_agent import PGAgent
 from learning.mpi_solver import MPISolver
 import learning.tf_util as TFUtil
 from pybullet_utils.logger import Logger
@@ -19,28 +14,13 @@ import pybullet_utils.mpi_util as MPIUtil
 import pybullet_utils.math_util as MathUtil
 from pybullet_envs.deep_mimic.env.env import Env
 from custom_reward import getRewardCustom
-from pybullet_envs.deep_mimic.learning.tf_agent import RLAgent
+
 '''
 Proximal Policy Optimization Agent
 '''
 
 
-class PPOAgent(RLAgent):
-  RESOURCE_SCOPE = 'resource'
-  SOLVER_SCOPE = 'solvers'
-  ACTOR_NET_KEY = 'ActorNet'
-  ACTOR_STEPSIZE_KEY = 'ActorStepsize'
-  ACTOR_MOMENTUM_KEY = 'ActorMomentum'
-  ACTOR_WEIGHT_DECAY_KEY = 'ActorWeightDecay'
-  ACTOR_INIT_OUTPUT_SCALE_KEY = 'ActorInitOutputScale'
-
-  CRITIC_NET_KEY = 'CriticNet'
-  CRITIC_STEPSIZE_KEY = 'CriticStepsize'
-  CRITIC_MOMENTUM_KEY = 'CriticMomentum'
-  CRITIC_WEIGHT_DECAY_KEY = 'CriticWeightDecay'
-
-  EXP_ACTION_FLAG = 1 << 0
-
+class PPOAgent(PGAgent):
   NAME = "PPO"
   EPOCHS_KEY = "Epochs"
   BATCH_SIZE_KEY = "BatchSize"
@@ -51,142 +31,17 @@ class PPOAgent(RLAgent):
   ACTOR_STEPSIZE_DECAY = "ActorStepsizeDecay"
 
   def __init__(self, world, id, json_data):
-    self.tf_scope = 'agent'
-    self.graph = tf.Graph()
-    self.sess = tf.Session(graph=self.graph)
 
     super().__init__(world, id, json_data)
-    self._build_graph(json_data)
-    self._init_normalizers()
-
     self._exp_action = False
     self.tf_scope = 'agent'
+    # self.graph = tf.Graph()
+    # self.sess = tf.Session(graph=self.graph)
 
     return
-  def __del__(self):
-    self.sess.close()
-    return
-
-  def _get_output_path(self):
-    assert (self.output_dir != '')
-    file_path = self.output_dir + '/agent' + str(self.id) + '_model.ckpt'
-    return file_path
-
-  def _get_int_output_path(self):
-    assert (self.int_output_dir != '')
-    file_path = self.int_output_dir + (
-        '/agent{:d}_models/agent{:d}_int_model_{:010d}.ckpt').format(self.id, self.id, self.iter)
-    return file_path
-
-  def _build_graph(self, json_data):
-    with self.sess.as_default(), self.graph.as_default():
-      with tf.variable_scope(self.tf_scope):
-        self._build_nets(json_data)
-
-        with tf.variable_scope(self.SOLVER_SCOPE):
-          self._build_losses(json_data)
-          self._build_solvers(json_data)
-
-        self._initialize_vars()
-        self._build_saver()
-    return
-
-
-  def _tf_vars(self, scope=''):
-    with self.sess.as_default(), self.graph.as_default():
-      res = tf.get_collection(tf.GraphKeys.TRAINABLE_VARIABLES, scope=self.tf_scope + '/' + scope)
-      assert len(res) > 0
-    return res
-
-  def _update_normalizers(self):
-    with self.sess.as_default(), self.graph.as_default():
-      super()._update_normalizers()
-    return
-
-
-  def _build_saver(self):
-    vars = self._get_saver_vars()
-    self.saver = tf.train.Saver(vars, max_to_keep=0)
-    return
-
-  def _get_saver_vars(self):
-    with self.sess.as_default(), self.graph.as_default():
-      vars = tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=self.tf_scope)
-      vars = [v for v in vars if '/' + self.SOLVER_SCOPE + '/' not in v.name]
-      #vars = [v for v in vars if '/target/' not in v.name]
-      assert len(vars) > 0
-    return vars
-  def _check_action_space(self):
-    action_space = self.get_action_space()
-    return action_space == ActionSpace.Continuous
-
-  def reset(self):
-    super().reset()
-    self._exp_action = False
-    return
-  def _build_normalizers(self):
-    with self.sess.as_default(), self.graph.as_default(), tf.variable_scope(self.tf_scope):
-      with tf.variable_scope(self.RESOURCE_SCOPE):
-        self.s_norm = TFNormalizer(self.sess, 's_norm', self.get_state_size(),
-                                   self.world.env.build_state_norm_groups(self.id))
-        state_offset = -self.world.env.build_state_offset(self.id)
-        print("state_offset=", state_offset)
-        state_scale = 1 / self.world.env.build_state_scale(self.id)
-        print("state_scale=", state_scale)
-        self.s_norm.set_mean_std(-self.world.env.build_state_offset(self.id),
-                                 1 / self.world.env.build_state_scale(self.id))
-
-        self.g_norm = TFNormalizer(self.sess, 'g_norm', self.get_goal_size(),
-                                   self.world.env.build_goal_norm_groups(self.id))
-        self.g_norm.set_mean_std(-self.world.env.build_goal_offset(self.id),
-                                 1 / self.world.env.build_goal_scale(self.id))
-
-        self.a_norm = TFNormalizer(self.sess, 'a_norm', self.get_action_size())
-        self.a_norm.set_mean_std(-self.world.env.build_action_offset(self.id),
-                                 1 / self.world.env.build_action_scale(self.id))
-    with self.sess.as_default(), self.graph.as_default(), tf.variable_scope(self.tf_scope):
-      with tf.variable_scope(self.RESOURCE_SCOPE):
-        val_offset, val_scale = self._calc_val_offset_scale(self.discount)
-        self.val_norm = TFNormalizer(self.sess, 'val_norm', 1)
-        self.val_norm.set_mean_std(-val_offset, 1.0 / val_scale)
-    return
-
-  def _init_normalizers(self):
-    with self.sess.as_default(), self.graph.as_default():
-      # update normalizers to sync the tensorflow tensors
-      self.s_norm.update()
-      self.g_norm.update()
-      self.a_norm.update()
-    with self.sess.as_default(), self.graph.as_default():
-      self.val_norm.update()
-    return
-
-  def _load_normalizers(self):
-    self.s_norm.load()
-    self.g_norm.load()
-    self.a_norm.load()
-    self.val_norm.load()
-    return
-
-  def _initialize_vars(self):
-    self.sess.run(tf.global_variables_initializer())
-    self._sync_solvers()
-    return
-
-  def _sync_solvers(self):
-    self.actor_solver.sync()
-    self.critic_solver.sync()
-    return
-
-  def _enable_stoch_policy(self):
-    return self.enable_training and (self._mode == self.Mode.TRAIN or
-                                     self._mode == self.Mode.TRAIN_END)
 
   def _load_params(self, json_data):
     super()._load_params(json_data)
-    
-    self.val_min, self.val_max = self._calc_val_bounds(self.discount)
-    self.val_fail, self.val_succ = self._calc_term_vals(self.discount)
 
     self.epochs = 1 if (self.EPOCHS_KEY not in json_data) else json_data[self.EPOCHS_KEY]
     self.batch_size = 1024 if (
@@ -209,30 +64,6 @@ class PPOAgent(RLAgent):
 
     self.replay_buffer_size = np.maximum(min_replay_size, self.replay_buffer_size)
 
-    return
-  def _eval_critic(self, s, g):
-    with self.sess.as_default(), self.graph.as_default():
-      s = np.reshape(s, [-1, self.get_state_size()])
-      g = np.reshape(g, [-1, self.get_goal_size()]) if self.has_goal() else None
-
-      feed = {self.s_tf: s, self.g_tf: g}
-
-      val = self.critic_tf.eval(feed)
-    return val
-  def _record_flags(self):
-    flags = int(0)
-    if (self._exp_action):
-      flags = flags | self.EXP_ACTION_FLAG
-    return flags
-  def _log_val(self, s, g):
-    val = self._eval_critic(s, g)
-    norm_val = self.val_norm.normalize(val)
-    self.world.env.log_val(self.id, norm_val[0])
-    return
-
-  def _build_replay_buffer(self, buffer_size):
-    super()._build_replay_buffer(buffer_size)
-    self.replay_buffer.add_filter_key(self.EXP_ACTION_FLAG)
     return
 
   def save_model(self, out_path):
