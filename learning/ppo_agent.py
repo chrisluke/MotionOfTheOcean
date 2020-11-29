@@ -5,6 +5,7 @@ try:
 except Exception:
   import tensorflow as tf
 
+import time
 from pybullet_envs.deep_mimic.learning.pg_agent import PGAgent
 from learning.mpi_solver import MPISolver
 import learning.tf_util as TFUtil
@@ -358,7 +359,8 @@ class PPOAgent(PGAgent):
       self._update_counter += timestep
 
       while self._update_counter >= self.update_period:
-        self._train()
+        with self.sess.as_default(), self.graph.as_default():
+          self._train()
         self._update_exp_params()
         self.world.env.set_sample_count(self._total_sample_count)
         self._update_counter -= self.update_period
