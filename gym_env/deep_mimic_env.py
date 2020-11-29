@@ -128,7 +128,7 @@ class HumanoidDeepBulletEnv(gym.Env):
   def seed(self, seed=None):
     self.np_random, seed = seeding.np_random(seed)
     return [seed]
-
+  
   def step(self, action):
     agent_id = self.agent_id
 

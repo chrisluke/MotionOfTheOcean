@@ -10,6 +10,7 @@ import os
 import pybullet_data
 import pybullet as p1
 import random
+from env.custom_reward import getRewardCustom
 
 from enum import Enum
 
@@ -251,7 +252,8 @@ class PyBulletDeepMimicEnv(Env):
 
   def calc_reward(self, agent_id):
     kinPose = self._humanoid.computePose(self._humanoid._frameFraction)
-    reward = self._humanoid.getReward(kinPose)
+    reward = getRewardCustom(kinPose,self._humanoid)
+    print("bye")
     return reward
 
   def set_action(self, agent_id, action):
