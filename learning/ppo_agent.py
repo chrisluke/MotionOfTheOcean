@@ -252,8 +252,6 @@ class PPOAgent(RLAgent):
     assert self.ACTOR_NET_KEY in json_data
     assert self.CRITIC_NET_KEY in json_data
 
-    actor_net_name = json_data[self.ACTOR_NET_KEY]
-    critic_net_name = json_data[self.CRITIC_NET_KEY]
     actor_init_output_scale = 1 if (self.ACTOR_INIT_OUTPUT_SCALE_KEY not in json_data
                                    ) else json_data[self.ACTOR_INIT_OUTPUT_SCALE_KEY]
 
@@ -271,15 +269,15 @@ class PPOAgent(RLAgent):
 
     with tf.variable_scope('main'):
       with tf.variable_scope('actor'):
-        self.a_mean_tf = self._build_net_actor(actor_net_name, actor_init_output_scale)
+        self.a_mean_tf = self._build_net_actor(actor_init_output_scale)
       with tf.variable_scope('critic'):
-        self.critic_tf = self._build_net_critic(critic_net_name)
+        self.critic_tf = self._build_net_critic()
 
     if (self.a_mean_tf != None):
-      Logger.print2('Built actor net: ' + actor_net_name)
+      Logger.print2('Built actor net:')
 
     if (self.critic_tf != None):
-      Logger.print2('Built critic net: ' + critic_net_name)
+      Logger.print2('Built critic net:')
 
     self.norm_a_std_tf = self.exp_params_curr.noise * tf.ones(a_size)
     norm_a_noise_tf = self.norm_a_std_tf * tf.random_normal(shape=tf.shape(self.a_mean_tf))
@@ -291,22 +289,22 @@ class PPOAgent(RLAgent):
 
     return
   
-  def _build_net_actor(self, net_name, init_output_scale):
+  def _build_net_actor(self, init_output_scale):
         norm_s_tf = self.s_norm.normalize_tf(self.s_tf)
         input_tfs = [norm_s_tf]
         
-        h = build_net(net_name, input_tfs)
+        h = build_net( input_tfs)
         norm_a_tf = tf.layers.dense(inputs=h, units=self.get_action_size(), activation=None,
                                 kernel_initializer=tf.random_uniform_initializer(minval=-init_output_scale, maxval=init_output_scale))
         
         a_tf = self.a_norm.unnormalize_tf(norm_a_tf)
         return a_tf
     
-  def _build_net_critic(self, net_name):
+  def _build_net_critic(self):
         norm_s_tf = self.s_norm.normalize_tf(self.s_tf)
         input_tfs = [norm_s_tf]
         
-        h = build_net(net_name, input_tfs)
+        h = build_net(input_tfs)
         norm_val_tf = tf.layers.dense(inputs=h, units=1, activation=None,
                                 kernel_initializer=TFUtil.xavier_initializer);
 
@@ -726,17 +724,13 @@ def compute_return(rewards, gamma, td_lambda, val_t):
 
   return return_t
 
-def build_net(net_name, input_tfs, reuse=False):
-  net = None
+def build_net(input_tfs, reuse=False):
 
-  if (net_name == "fc_2layers_1024units"):
-    layers = [1024, 512]
-    activation = tf.nn.relu
+  layers = [1024, 512]
+  activation = tf.nn.relu
 
-    input_tf = tf.concat(axis=-1, values=input_tfs)
-    net = TFUtil.fc_net(input_tf, layers, activation=activation, reuse=reuse)
-    net = activation(net)
-  else:
-    assert False, 'Unsupported net: ' + net_name
+  input_tf = tf.concat(axis=-1, values=input_tfs)
+  net = TFUtil.fc_net(input_tf, layers, activation=activation, reuse=reuse)
+  net = activation(net)
 
   return net
