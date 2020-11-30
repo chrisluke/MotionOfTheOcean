@@ -577,13 +577,15 @@ class PPOAgent(RLAgent):
           Logger.print2("")
 
           if (self._enable_output() and curr_iter % self.int_output_iters == 0):
+            # this line writes a log recording what was printed for the curretn iteration
+            # to a file called agent0_log.txt in /output folder
             self.logger.dump_tabular()
 
         if (prev_iter // self.int_output_iters != self.iter // self.int_output_iters):
           end_training = self.enable_testing()
 
     else:
-
+      print("WENT INTO ELSE")
       Logger.print2("Agent " + str(self.id))
       Logger.print2("Samples: " + str(self._total_sample_count))
       Logger.print2("")
@@ -593,10 +595,12 @@ class PPOAgent(RLAgent):
         end_training = self.enable_testing()
 
     if self._need_normalizer_update:
+      print("UPDATE NORMALIZERS")
       self._update_normalizers()
       self._need_normalizer_update = self.normalizer_samples > self._total_sample_count
 
     if end_training:
+      print("END TRAINING")
       self._init_mode_train_end()
 
     return
@@ -626,7 +630,7 @@ class PPOAgent(RLAgent):
 
   def _compute_batch_new_vals(self, start_idx, end_idx, val_buffer):
     rewards = self.replay_buffer.get_all("rewards")[start_idx:end_idx]
-
+    print("val_buffer: ", val_buffer)
     if self.discount == 0:
       new_vals = rewards.copy()
     else:
