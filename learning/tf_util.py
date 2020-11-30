@@ -36,8 +36,7 @@ def flat_grad(loss, var_list, grad_ys=None):
   return tf.concat([tf.reshape(grad, [numel(v)]) for (v, grad) in zip(var_list, grads)], axis=0)
 
 
-def fc_net(input, layers_sizes, activation, reuse=None,
-           flatten=False):  # build fully connected network
+def fc_net(input, layers_sizes, activation, reuse=None):  # build fully connected network
   curr_tf = input
   for i, size in enumerate(layers_sizes):
     with tf.variable_scope(str(i), reuse=reuse):
@@ -45,9 +44,6 @@ def fc_net(input, layers_sizes, activation, reuse=None,
                                 units=size,
                                 kernel_initializer=xavier_initializer,
                                 activation=activation if i < len(layers_sizes) - 1 else None)
-  if flatten:
-    assert layers_sizes[-1] == 1
-    curr_tf = tf.reshape(curr_tf, [-1])
 
   return curr_tf
 
