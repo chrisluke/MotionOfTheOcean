@@ -51,6 +51,7 @@ class PPOAgent(RLAgent):
   ACTOR_STEPSIZE_DECAY = "ActorStepsizeDecay"
 
   def __init__(self, world, id, json_data):
+    self.state_size = 197
     self.tf_scope = 'agent'
     self.graph = tf.Graph()
     self.sess = tf.Session(graph=self.graph)
@@ -61,6 +62,7 @@ class PPOAgent(RLAgent):
 
     self._exp_action = False
     self.tf_scope = 'agent'
+    
     
 
     return
@@ -128,7 +130,7 @@ class PPOAgent(RLAgent):
   def _build_normalizers(self):
     with self.sess.as_default(), self.graph.as_default(), tf.variable_scope(self.tf_scope):
       with tf.variable_scope(self.RESOURCE_SCOPE):
-        self.s_norm = TFNormalizer(self.sess, 's_norm', self.get_state_size(),
+        self.s_norm = TFNormalizer(self.sess, 's_norm', self.state_size,
                                    self.world.env.build_state_norm_groups(self.id))
         state_offset = -self.world.env.build_state_offset(self.id)
         print("state_offset=", state_offset)
@@ -209,7 +211,7 @@ class PPOAgent(RLAgent):
     return
   def _eval_critic(self, s):
     with self.sess.as_default(), self.graph.as_default():
-      s = np.reshape(s, [-1, self.get_state_size()])
+      s = np.reshape(s, [-1, self.state_size])
       
 
       feed = {self.s_tf: s}
@@ -250,7 +252,7 @@ class PPOAgent(RLAgent):
     actor_init_output_scale = 1 if (self.ACTOR_INIT_OUTPUT_SCALE_KEY not in json_data
                                    ) else json_data[self.ACTOR_INIT_OUTPUT_SCALE_KEY]
 
-    s_size = self.get_state_size()
+    s_size = self.state_size
     a_size = self.get_action_size()
 
     # setup input tensors
@@ -393,7 +395,7 @@ class PPOAgent(RLAgent):
     return a[0], logp[0]
 
   def _eval_actor(self, s, enable_exp):
-    s = np.reshape(s, [-1, self.get_state_size()])
+    s = np.reshape(s, [-1, self.state_size])
 
     feed = {self.s_tf: s, self.exp_mask_tf: np.array([1 if enable_exp else 0])}
 
