@@ -61,6 +61,7 @@ class PPOAgent(RLAgent):
 
     self._exp_action = False
     self.tf_scope = 'agent'
+    
 
     return
   def __del__(self):
@@ -136,10 +137,8 @@ class PPOAgent(RLAgent):
         self.s_norm.set_mean_std(-self.world.env.build_state_offset(self.id),
                                  1 / self.world.env.build_state_scale(self.id))
 
-        self.g_norm = TFNormalizer(self.sess, 'g_norm', self.get_goal_size(),
-                                   self.world.env.build_goal_norm_groups(self.id))
-        self.g_norm.set_mean_std(-self.world.env.build_goal_offset(self.id),
-                                 1 / self.world.env.build_goal_scale(self.id))
+        
+        
 
         self.a_norm = TFNormalizer(self.sess, 'a_norm', self.get_action_size())
         self.a_norm.set_mean_std(-self.world.env.build_action_offset(self.id),
@@ -155,7 +154,6 @@ class PPOAgent(RLAgent):
     with self.sess.as_default(), self.graph.as_default():
       # update normalizers to sync the tensorflow tensors
       self.s_norm.update()
-      self.g_norm.update()
       self.a_norm.update()
     with self.sess.as_default(), self.graph.as_default():
       self.val_norm.update()
@@ -163,7 +161,6 @@ class PPOAgent(RLAgent):
 
   def _load_normalizers(self):
     self.s_norm.load()
-    self.g_norm.load()
     self.a_norm.load()
     self.val_norm.load()
     return
@@ -210,12 +207,12 @@ class PPOAgent(RLAgent):
     self.replay_buffer_size = np.maximum(min_replay_size, self.replay_buffer_size)
 
     return
-  def _eval_critic(self, s, g):
+  def _eval_critic(self, s):
     with self.sess.as_default(), self.graph.as_default():
       s = np.reshape(s, [-1, self.get_state_size()])
-      g = np.reshape(g, [-1, self.get_goal_size()]) if self.has_goal() else None
+      
 
-      feed = {self.s_tf: s, self.g_tf: g}
+      feed = {self.s_tf: s}
 
       val = self.critic_tf.eval(feed)
     return val
@@ -224,8 +221,8 @@ class PPOAgent(RLAgent):
     if (self._exp_action):
       flags = flags | self.EXP_ACTION_FLAG
     return flags
-  def _log_val(self, s, g):
-    val = self._eval_critic(s, g)
+  def _log_val(self, s):
+    val = self._eval_critic(s)
     norm_val = self.val_norm.normalize(val)
     self.world.env.log_val(self.id, norm_val[0])
     return
@@ -261,7 +258,6 @@ class PPOAgent(RLAgent):
                                    ) else json_data[self.ACTOR_INIT_OUTPUT_SCALE_KEY]
 
     s_size = self.get_state_size()
-    g_size = self.get_goal_size()
     a_size = self.get_action_size()
 
     # setup input tensors
@@ -269,9 +265,7 @@ class PPOAgent(RLAgent):
     self.a_tf = tf.placeholder(tf.float32, shape=[None, a_size], name="a")
     self.tar_val_tf = tf.placeholder(tf.float32, shape=[None], name="tar_val")
     self.adv_tf = tf.placeholder(tf.float32, shape=[None], name="adv")
-    self.g_tf = tf.placeholder(tf.float32,
-                               shape=([None, g_size] if self.has_goal() else None),
-                               name="g")
+    
     self.old_logp_tf = tf.placeholder(tf.float32, shape=[None], name="old_logp")
     self.exp_mask_tf = tf.placeholder(tf.float32, shape=[None], name="exp_mask")
 
@@ -300,9 +294,6 @@ class PPOAgent(RLAgent):
   def _build_net_actor(self, net_name, init_output_scale):
         norm_s_tf = self.s_norm.normalize_tf(self.s_tf)
         input_tfs = [norm_s_tf]
-        if (self.has_goal()):
-            norm_g_tf = self.g_norm.normalize_tf(self.g_tf)
-            input_tfs += [norm_g_tf]
         
         h = build_net(net_name, input_tfs)
         norm_a_tf = tf.layers.dense(inputs=h, units=self.get_action_size(), activation=None,
@@ -314,9 +305,6 @@ class PPOAgent(RLAgent):
   def _build_net_critic(self, net_name):
         norm_s_tf = self.s_norm.normalize_tf(self.s_tf)
         input_tfs = [norm_s_tf]
-        if (self.has_goal()):
-            norm_g_tf = self.g_norm.normalize_tf(self.g_tf)
-            input_tfs += [norm_g_tf]
         
         h = build_net(net_name, input_tfs)
         norm_val_tf = tf.layers.dense(inputs=h, units=1, activation=None,
@@ -403,19 +391,18 @@ class PPOAgent(RLAgent):
 
     return
 
-  def _decide_action(self, s, g):
+  def _decide_action(self, s):
     with self.sess.as_default(), self.graph.as_default():
       self._exp_action = self._enable_stoch_policy() and MathUtil.flip_coin(
           self.exp_params_curr.rate)
       #print("_decide_action._exp_action=",self._exp_action)
-      a, logp = self._eval_actor(s, g, self._exp_action)
+      a, logp = self._eval_actor(s, self._exp_action)
     return a[0], logp[0]
 
-  def _eval_actor(self, s, g, enable_exp):
+  def _eval_actor(self, s, enable_exp):
     s = np.reshape(s, [-1, self.get_state_size()])
-    g = np.reshape(g, [-1, self.get_goal_size()]) if self.has_goal() else None
 
-    feed = {self.s_tf: s, self.g_tf: g, self.exp_mask_tf: np.array([1 if enable_exp else 0])}
+    feed = {self.s_tf: s, self.exp_mask_tf: np.array([1 if enable_exp else 0])}
 
     a, logp = self.sess.run([self.sample_a_tf, self.sample_a_logp_tf], feed_dict=feed)
     return a, logp
@@ -480,14 +467,12 @@ class PPOAgent(RLAgent):
         actor_batch_adv = adv[actor_batch[:, 1]]
 
         critic_s = self.replay_buffer.get('states', critic_batch)
-        critic_g = self.replay_buffer.get('goals', critic_batch) if self.has_goal() else None
-        curr_critic_loss = self._update_critic(critic_s, critic_g, critic_batch_vals)
+        curr_critic_loss = self._update_critic(critic_s, critic_batch_vals)
 
         actor_s = self.replay_buffer.get("states", actor_batch[:, 0])
-        actor_g = self.replay_buffer.get("goals", actor_batch[:, 0]) if self.has_goal() else None
         actor_a = self.replay_buffer.get("actions", actor_batch[:, 0])
         actor_logp = self.replay_buffer.get("logps", actor_batch[:, 0])
-        curr_actor_loss, curr_actor_clip_frac = self._update_actor(actor_s, actor_g, actor_a,
+        curr_actor_loss, curr_actor_clip_frac = self._update_actor(actor_s, actor_a,
                                                                    actor_logp, actor_batch_adv)
 
         critic_loss += curr_critic_loss
@@ -546,7 +531,7 @@ class PPOAgent(RLAgent):
             r = self._record_reward()
             self.path.rewards.append(r)
         
-        a, logp = self._decide_action(s=s, g=g)
+        a, logp = self._decide_action(s=s)
         assert len(np.shape(a)) == 1
         assert len(np.shape(logp)) <= 1
 
@@ -554,13 +539,13 @@ class PPOAgent(RLAgent):
         self._apply_action(a)
 
         self.path.states.append(s)
-        self.path.goals.append(g)
         self.path.actions.append(a)
+        self.path.goals.append(g)
         self.path.logps.append(logp)
         self.path.flags.append(flags)
         
         if self._enable_draw():
-            self._log_val(s, g)
+            self._log_val(s)
         
         return
 
@@ -580,11 +565,9 @@ class PPOAgent(RLAgent):
           wall_time = time.time() - self.start_time
           wall_time /= 60 * 60  # store time in hours
 
-          has_goal = self.has_goal()
+          has_goal = False
           s_mean = np.mean(self.s_norm.mean)
           s_std = np.mean(self.s_norm.std)
-          g_mean = np.mean(self.g_norm.mean) if has_goal else 0
-          g_std = np.mean(self.g_norm.std) if has_goal else 0
 
           self.logger.log_tabular("Iteration", self.iter)
           self.logger.log_tabular("Wall_Time", wall_time)
@@ -593,8 +576,6 @@ class PPOAgent(RLAgent):
           self.logger.log_tabular("Test_Return", self.avg_test_return)
           self.logger.log_tabular("State_Mean", s_mean)
           self.logger.log_tabular("State_Std", s_std)
-          self.logger.log_tabular("Goal_Mean", g_mean)
-          self.logger.log_tabular("Goal_Std", g_std)
           self._log_exp_params()
 
           self._update_iter(self.iter + 1)
@@ -641,7 +622,6 @@ class PPOAgent(RLAgent):
 
   def _compute_batch_vals(self, start_idx, end_idx):
     states = self.replay_buffer.get_all("states")[start_idx:end_idx]
-    goals = self.replay_buffer.get_all("goals")[start_idx:end_idx] if self.has_goal() else None
 
     idx = np.array(list(range(start_idx, end_idx)))
     is_end = self.replay_buffer.is_path_end(idx)
@@ -650,7 +630,7 @@ class PPOAgent(RLAgent):
     is_fail = np.logical_and(is_end, is_fail)
     is_succ = np.logical_and(is_end, is_succ)
 
-    vals = self._eval_critic(states, goals)
+    vals = self._eval_critic(states)
     vals[is_fail] = self.val_fail
     vals[is_succ] = self.val_succ
 
@@ -676,15 +656,15 @@ class PPOAgent(RLAgent):
 
     return new_vals
 
-  def _update_critic(self, s, g, tar_vals):
-    feed = {self.s_tf: s, self.g_tf: g, self.tar_val_tf: tar_vals}
+  def _update_critic(self, s, tar_vals):
+    feed = {self.s_tf: s, self.tar_val_tf: tar_vals}
 
     loss, grads = self.sess.run([self.critic_loss_tf, self.critic_grad_tf], feed)
     self.critic_solver.update(grads)
     return loss
 
-  def _update_actor(self, s, g, a, logp, adv):
-    feed = {self.s_tf: s, self.g_tf: g, self.a_tf: a, self.adv_tf: adv, self.old_logp_tf: logp}
+  def _update_actor(self, s, a, logp, adv):
+    feed = {self.s_tf: s, self.a_tf: a, self.adv_tf: adv, self.old_logp_tf: logp}
 
     loss, grads, clip_frac = self.sess.run(
         [self.actor_loss_tf, self.actor_grad_tf, self.clip_frac_tf], feed)
