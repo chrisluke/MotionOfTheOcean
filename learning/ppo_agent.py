@@ -52,6 +52,7 @@ class PPOAgent(RLAgent):
 
   def __init__(self, world, id, json_data):
     self.state_size = 197
+    self.num_actions = 36
     self.tf_scope = 'agent'
     self.graph = tf.Graph()
     self.sess = tf.Session(graph=self.graph)
@@ -62,7 +63,7 @@ class PPOAgent(RLAgent):
 
     self._exp_action = False
     self.tf_scope = 'agent'
-    
+    self.custom_model = ReinforceWithBaseline(self.num_actions)
     
 
     return
@@ -245,162 +246,63 @@ class PPOAgent(RLAgent):
       Logger.print2('Model loaded from: ' + in_path)
     return
 
-  def _build_nets(self, json_data):
-    assert self.ACTOR_NET_KEY in json_data
-    assert self.CRITIC_NET_KEY in json_data
+  # def _build_losses(self, json_data):
+  #   actor_weight_decay = 0 if (
+  #       self.ACTOR_WEIGHT_DECAY_KEY not in json_data) else json_data[self.ACTOR_WEIGHT_DECAY_KEY]
+  #   critic_weight_decay = 0 if (
+  #       self.CRITIC_WEIGHT_DECAY_KEY not in json_data) else json_data[self.CRITIC_WEIGHT_DECAY_KEY]
 
-    actor_init_output_scale = 1 if (self.ACTOR_INIT_OUTPUT_SCALE_KEY not in json_data
-                                   ) else json_data[self.ACTOR_INIT_OUTPUT_SCALE_KEY]
+  #   norm_val_diff = self.val_norm.normalize_tf(self.tar_val_tf) - self.val_norm.normalize_tf(
+  #       self.critic_tf)
+  #   self.critic_loss_tf = 0.5 * tf.reduce_mean(tf.square(norm_val_diff))
 
-    s_size = self.state_size
-    a_size = self.get_action_size()
+  #   if (critic_weight_decay != 0):
+  #     self.critic_loss_tf += critic_weight_decay * self._weight_decay_loss('main/critic')
 
-    # setup input tensors
-    self.s_tf = tf.placeholder(tf.float32, shape=[None, s_size], name="s")
-    self.a_tf = tf.placeholder(tf.float32, shape=[None, a_size], name="a")
-    self.tar_val_tf = tf.placeholder(tf.float32, shape=[None], name="tar_val")
-    self.adv_tf = tf.placeholder(tf.float32, shape=[None], name="adv")
-    
-    self.old_logp_tf = tf.placeholder(tf.float32, shape=[None], name="old_logp")
-    self.exp_mask_tf = tf.placeholder(tf.float32, shape=[None], name="exp_mask")
+  #   norm_tar_a_tf = self.a_norm.normalize_tf(self.a_tf)
+  #   self._norm_a_mean_tf = self.a_norm.normalize_tf(self.a_mean_tf)
 
-    with tf.variable_scope('main'):
-      with tf.variable_scope('actor'):
-        self.a_mean_tf = self._build_net_actor(actor_init_output_scale)
-      with tf.variable_scope('critic'):
-        self.critic_tf = self._build_net_critic()
+  #   self.logp_tf = TFUtil.calc_logp_gaussian(norm_tar_a_tf, self._norm_a_mean_tf,
+  #                                            self.norm_a_std_tf)
+  #   ratio_tf = tf.exp(self.logp_tf - self.old_logp_tf)
+  #   actor_loss0 = self.adv_tf * ratio_tf
+  #   actor_loss1 = self.adv_tf * tf.clip_by_value(ratio_tf, 1.0 - self.ratio_clip,
+  #                                                1 + self.ratio_clip)
+  #   self.actor_loss_tf = -tf.reduce_mean(tf.minimum(actor_loss0, actor_loss1))
 
-    if (self.a_mean_tf != None):
-      Logger.print2('Built actor net:')
+  #   norm_a_bound_min = self.a_norm.normalize(self.a_bound_min)
+  #   norm_a_bound_max = self.a_norm.normalize(self.a_bound_max)
+  #   a_bound_loss = TFUtil.calc_bound_loss(self._norm_a_mean_tf, norm_a_bound_min, norm_a_bound_max)
+  #   self.actor_loss_tf += a_bound_loss
 
-    if (self.critic_tf != None):
-      Logger.print2('Built critic net:')
+  #   if (actor_weight_decay != 0):
+  #     self.actor_loss_tf += actor_weight_decay * self._weight_decay_loss('main/actor')
 
-    self.norm_a_std_tf = self.exp_params_curr.noise * tf.ones(a_size)
-    norm_a_noise_tf = self.norm_a_std_tf * tf.random_normal(shape=tf.shape(self.a_mean_tf))
-    norm_a_noise_tf *= tf.expand_dims(self.exp_mask_tf, axis=-1)
-    self.sample_a_tf = self.a_mean_tf + norm_a_noise_tf * self.a_norm.std_tf
-    self.sample_a_logp_tf = TFUtil.calc_logp_gaussian(x_tf=norm_a_noise_tf,
-                                                      mean_tf=None,
-                                                      std_tf=self.norm_a_std_tf)
+  #   # for debugging
+  #   self.clip_frac_tf = tf.reduce_mean(
+  #       tf.to_float(tf.greater(tf.abs(ratio_tf - 1.0), self.ratio_clip)))
 
-    return
+  #   return
   
-  def _build_net_actor(self, init_output_scale):
-        norm_s_tf = self.s_norm.normalize_tf(self.s_tf)
-        input_tfs = [norm_s_tf]
-        
-        h = build_net( input_tfs)
-        norm_a_tf = tf.layers.dense(inputs=h, units=self.get_action_size(), activation=None,
-                                kernel_initializer=tf.random_uniform_initializer(minval=-init_output_scale, maxval=init_output_scale))
-        
-        a_tf = self.a_norm.unnormalize_tf(norm_a_tf)
-        return a_tf
-    
-  def _build_net_critic(self):
-        norm_s_tf = self.s_norm.normalize_tf(self.s_tf)
-        input_tfs = [norm_s_tf]
-        
-        h = build_net(input_tfs)
-        norm_val_tf = tf.layers.dense(inputs=h, units=1, activation=None,
-                                kernel_initializer=TFUtil.xavier_initializer);
+  # def _weight_decay_loss(self, scope):
+  #   vars = self._tf_vars(scope)
+  #   vars_no_bias = [v for v in vars if 'bias' not in v.name]
+  #   loss = tf.add_n([tf.nn.l2_loss(v) for v in vars_no_bias])
+  #   return loss
 
-        norm_val_tf = tf.reshape(norm_val_tf, [-1])
-        val_tf = self.val_norm.unnormalize_tf(norm_val_tf)
-        return val_tf
-
-  def _build_losses(self, json_data):
-    actor_weight_decay = 0 if (
-        self.ACTOR_WEIGHT_DECAY_KEY not in json_data) else json_data[self.ACTOR_WEIGHT_DECAY_KEY]
-    critic_weight_decay = 0 if (
-        self.CRITIC_WEIGHT_DECAY_KEY not in json_data) else json_data[self.CRITIC_WEIGHT_DECAY_KEY]
-
-    norm_val_diff = self.val_norm.normalize_tf(self.tar_val_tf) - self.val_norm.normalize_tf(
-        self.critic_tf)
-    self.critic_loss_tf = 0.5 * tf.reduce_mean(tf.square(norm_val_diff))
-
-    if (critic_weight_decay != 0):
-      self.critic_loss_tf += critic_weight_decay * self._weight_decay_loss('main/critic')
-
-    norm_tar_a_tf = self.a_norm.normalize_tf(self.a_tf)
-    self._norm_a_mean_tf = self.a_norm.normalize_tf(self.a_mean_tf)
-
-    self.logp_tf = TFUtil.calc_logp_gaussian(norm_tar_a_tf, self._norm_a_mean_tf,
-                                             self.norm_a_std_tf)
-    ratio_tf = tf.exp(self.logp_tf - self.old_logp_tf)
-    actor_loss0 = self.adv_tf * ratio_tf
-    actor_loss1 = self.adv_tf * tf.clip_by_value(ratio_tf, 1.0 - self.ratio_clip,
-                                                 1 + self.ratio_clip)
-    self.actor_loss_tf = -tf.reduce_mean(tf.minimum(actor_loss0, actor_loss1))
-
-    norm_a_bound_min = self.a_norm.normalize(self.a_bound_min)
-    norm_a_bound_max = self.a_norm.normalize(self.a_bound_max)
-    a_bound_loss = TFUtil.calc_bound_loss(self._norm_a_mean_tf, norm_a_bound_min, norm_a_bound_max)
-    self.actor_loss_tf += a_bound_loss
-
-    if (actor_weight_decay != 0):
-      self.actor_loss_tf += actor_weight_decay * self._weight_decay_loss('main/actor')
-
-    # for debugging
-    self.clip_frac_tf = tf.reduce_mean(
-        tf.to_float(tf.greater(tf.abs(ratio_tf - 1.0), self.ratio_clip)))
-
-    return
   
-  def _weight_decay_loss(self, scope):
-    vars = self._tf_vars(scope)
-    vars_no_bias = [v for v in vars if 'bias' not in v.name]
-    loss = tf.add_n([tf.nn.l2_loss(v) for v in vars_no_bias])
-    return loss
+  def custom_decide_action(self, s):
+    logits = self.custom_model.call(np.reshape(s, [-1, self.state_size]))
 
-  def _build_solvers(self, json_data):
-    actor_stepsize = 0.001 if (
-        self.ACTOR_STEPSIZE_KEY not in json_data) else json_data[self.ACTOR_STEPSIZE_KEY]
-    actor_momentum = 0.9 if (
-        self.ACTOR_MOMENTUM_KEY not in json_data) else json_data[self.ACTOR_MOMENTUM_KEY]
-    critic_stepsize = 0.01 if (
-        self.CRITIC_STEPSIZE_KEY not in json_data) else json_data[self.CRITIC_STEPSIZE_KEY]
-    critic_momentum = 0.9 if (
-        self.CRITIC_MOMENTUM_KEY not in json_data) else json_data[self.CRITIC_MOMENTUM_KEY]
+    action_choices = np.arange(self.num_actions)
+    normed_probs = np.linalg.norm(logits, axis=0)
+    action_index = np.random.choice(action_choices, 1, p=normed_probs)
+    custom_action = action_index[0]
 
-    critic_vars = self._tf_vars('main/critic')
-    critic_opt = tf.train.MomentumOptimizer(learning_rate=critic_stepsize,
-                                            momentum=critic_momentum)
-    # critic_opt = tf.keras.optimizers.SGD(learning_rate=critic_stepsize, momentum=critic_momentum)
-    self.critic_grad_tf = tf.gradients(self.critic_loss_tf, critic_vars)
-    self.critic_solver = MPISolver(self.sess, critic_opt, critic_vars)
-
-    self._actor_stepsize_tf = tf.get_variable(dtype=tf.float32,
-                                              name='actor_stepsize',
-                                              initializer=actor_stepsize,
-                                              trainable=False)
-    self._actor_stepsize_ph = tf.get_variable(dtype=tf.float32, name='actor_stepsize_ph', shape=[])
-    self._actor_stepsize_update_op = self._actor_stepsize_tf.assign(self._actor_stepsize_ph)
-
-    actor_vars = self._tf_vars('main/actor')
-    actor_opt = tf.train.MomentumOptimizer(learning_rate=self._actor_stepsize_tf,
-                                           momentum=actor_momentum)
-    # actor_opt = tf.keras.optimizers.SGD(learning_rate=self._actor_stepsize_tf, momentum=actor_momentum)
-    self.actor_grad_tf = tf.gradients(self.actor_loss_tf, actor_vars)
-    self.actor_solver = MPISolver(self.sess, actor_opt, actor_vars)
-
-    return
-
-  def _decide_action(self, s):
-    with self.sess.as_default(), self.graph.as_default():
-      self._exp_action = self._enable_stoch_policy() and MathUtil.flip_coin(
-          self.exp_params_curr.rate)
-      #print("_decide_action._exp_action=",self._exp_action)
-      a, logp = self._eval_actor(s, self._exp_action)
-    return a[0], logp[0]
-
-  def _eval_actor(self, s, enable_exp):
-    s = np.reshape(s, [-1, self.state_size])
-
-    feed = {self.s_tf: s, self.exp_mask_tf: np.array([1 if enable_exp else 0])}
-
-    a, logp = self.sess.run([self.sample_a_tf, self.sample_a_logp_tf], feed_dict=feed)
-    return a, logp
+    new_standard_deviation = tf.math.reduce_std(logits)
+      
+    custom_logp = calc_logp_gaussian(logits,mean_tf=None,std_tf=new_standard_deviation)
+    return custom_action, custom_logp
 
   def _train_step(self):
     adv_eps = 1e-5
@@ -416,8 +318,8 @@ class PPOAgent(RLAgent):
     end_mask = self.replay_buffer.is_path_end(idx)
     end_mask = np.logical_not(end_mask)
 
-    vals = self._compute_batch_vals(start_idx, end_idx)
-    new_vals = self._compute_batch_new_vals(start_idx, end_idx, vals)
+    vals = self.custom_model.custom_compute_batch_vals(self,start_idx, end_idx)
+    new_vals = self.custom_model.custom_compute_batch_new_vals(start_idx, end_idx, vals)
 
     valid_idx = idx[end_mask]
     exp_idx = self.replay_buffer.get_idx_filtered(self.EXP_ACTION_FLAG).copy()
@@ -437,8 +339,6 @@ class PPOAgent(RLAgent):
     adv = (adv - adv_mean) / (adv_std + adv_eps)
     adv = np.clip(adv, -self.norm_adv_clip, self.norm_adv_clip)
 
-    critic_loss = 0
-    actor_loss = 0
     actor_clip_frac = 0
 
     for e in range(self.epochs):
@@ -470,29 +370,16 @@ class PPOAgent(RLAgent):
         curr_actor_loss, curr_actor_clip_frac = self._update_actor(actor_s, actor_a,
                                                                    actor_logp, actor_batch_adv)
 
-        critic_loss += curr_critic_loss
-        actor_loss += np.abs(curr_actor_loss)
         actor_clip_frac += curr_actor_clip_frac
 
         if (shuffle_actor):
           np.random.shuffle(exp_idx)
 
     total_batches = mini_batches * self.epochs
-    critic_loss /= total_batches
-    actor_loss /= total_batches
     actor_clip_frac /= total_batches
 
-    critic_loss = MPIUtil.reduce_avg(critic_loss)
-    actor_loss = MPIUtil.reduce_avg(actor_loss)
     actor_clip_frac = MPIUtil.reduce_avg(actor_clip_frac)
 
-    critic_stepsize = self.critic_solver.get_stepsize()
-    actor_stepsize = self.update_actor_stepsize(actor_clip_frac)
-
-    self.logger.log_tabular('Critic_Loss', critic_loss)
-    self.logger.log_tabular('Critic_Stepsize', critic_stepsize)
-    self.logger.log_tabular('Actor_Loss', actor_loss)
-    self.logger.log_tabular('Actor_Stepsize', actor_stepsize)
     self.logger.log_tabular('Clip_Frac', actor_clip_frac)
     self.logger.log_tabular('Adv_Mean', adv_mean)
     self.logger.log_tabular('Adv_Std', adv_std)
@@ -506,17 +393,23 @@ class PPOAgent(RLAgent):
       # print("update_new_action!!!")
       state = self.world.env.record_state(self.id)
       a, logp = self._decide_action(s=state)
-      self._update_new_action(state, a, logp)
+      print("a.shape: ", a.shape,  "logp: " , logp)
+
+      custom_a, custom_logp = self.custom_decide_action(s=state)
+      
+      
+      self._update_new_action(state, custom_a, custom_logp)
 
     if (self._mode == self.Mode.TRAIN and self.enable_training):
       self._update_counter += timestep
 
       while self._update_counter >= self.update_period:
-        with self.sess.as_default(), self.graph.as_default():
+        with tf.GradientTape() as tape:
           self._train()
         self._update_exp_params()
         self.world.env.set_sample_count(self._total_sample_count)
         self._update_counter -= self.update_period
+      
 
     return
   
@@ -629,26 +522,7 @@ class PPOAgent(RLAgent):
     vals[is_succ] = self.val_succ
 
     return vals
-
-  def _compute_batch_new_vals(self, start_idx, end_idx, val_buffer):
-    rewards = self.replay_buffer.get_all("rewards")[start_idx:end_idx]
-    print("val_buffer: ", val_buffer)
-    if self.discount == 0:
-      new_vals = rewards.copy()
-    else:
-      new_vals = np.zeros_like(val_buffer)
-
-      curr_idx = start_idx
-      while curr_idx < end_idx:
-        idx0 = curr_idx - start_idx
-        idx1 = self.replay_buffer.get_path_end(curr_idx) - start_idx
-        r = rewards[idx0:idx1]
-        v = val_buffer[idx0:(idx1 + 1)]
-
-        new_vals[idx0:idx1] = compute_return(r, self.discount, self.td_lambda, v)
-        curr_idx = idx1 + start_idx + 1
-
-    return new_vals
+  
 
   def _update_critic(self, s, tar_vals):
     feed = {self.s_tf: s, self.tar_val_tf: tar_vals}
@@ -665,38 +539,6 @@ class PPOAgent(RLAgent):
     self.actor_solver.update(grads)
 
     return loss, clip_frac
-
-  def update_actor_stepsize(self, clip_frac):
-    clip_tol = 1.5
-    step_scale = 2
-    max_stepsize = 1e-2
-    min_stepsize = 1e-8
-    warmup_iters = 5
-
-    actor_stepsize = self.actor_solver.get_stepsize()
-    if (self.tar_clip_frac >= 0 and self.iter > warmup_iters):
-      min_clip = self.tar_clip_frac / clip_tol
-      max_clip = self.tar_clip_frac * clip_tol
-      under_tol = clip_frac < min_clip
-      over_tol = clip_frac > max_clip
-
-      if (over_tol or under_tol):
-        if (over_tol):
-          actor_stepsize *= self.actor_stepsize_decay
-        else:
-          actor_stepsize /= self.actor_stepsize_decay
-
-        actor_stepsize = np.clip(actor_stepsize, min_stepsize, max_stepsize)
-        self.set_actor_stepsize(actor_stepsize)
-
-    return actor_stepsize
-
-  def set_actor_stepsize(self, stepsize):
-    feed = {
-        self._actor_stepsize_ph: stepsize,
-    }
-    self.sess.run(self._actor_stepsize_update_op, feed)
-    return
   
   def _record_reward(self):
     kinPose = self.world.env._humanoid.computePose(self.world.env._humanoid._frameFraction)
@@ -720,13 +562,181 @@ def compute_return(rewards, gamma, td_lambda, val_t):
 
   return return_t
 
-def build_net(input_tfs, reuse=False):
 
-  layers = [1024, 512]
-  activation = tf.nn.relu
+def calc_logp_gaussian(x_tf, mean_tf, std_tf):
+  dim = tf.to_float(tf.shape(x_tf)[-1])
 
-  input_tf = tf.concat(axis=-1, values=input_tfs)
-  net = TFUtil.fc_net(input_tf, layers, activation=activation, reuse=reuse)
-  net = activation(net)
+  if mean_tf is None:
+    diff_tf = x_tf
+  else:
+    diff_tf = x_tf - mean_tf
 
-  return net
+  logp_tf = -0.5 * tf.reduce_sum(tf.square(diff_tf / std_tf), axis=-1)
+  logp_tf += tf.cast(-0.5 * dim * np.log(2 * np.pi) - tf.cast(std_tf, dtype=tf.float32),dtype=tf.float64)
+
+  return logp_tf
+
+class ReinforceWithBaseline(tf.keras.Model):
+    def __init__(self, num_actions):
+        """
+        The ReinforceWithBaseline class that inherits from tf.keras.Model.
+
+        The forward pass calculates the policy for the agent given a batch of states. During training,
+        ReinforceWithBaseLine estimates the value of each state to be used as a baseline to compare the policy's
+        performance with.
+
+        :param state_size: number of parameters that define the state. You don't necessarily have to use this, 
+                           but it can be used as the input size for your first dense layer.
+        :param num_actions: number of actions in an environment
+        """
+        super(ReinforceWithBaseline, self).__init__()
+        self.num_actions = num_actions
+
+        # initial_learning_rate=0.1
+        # lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate,decay_steps=1000, decay_rate=0.96)
+        
+        # learning_rate = tf.keras.optimizers.schedules.ExponentialDecay(1e-4, decay_steps=100, decay_rate=0.96, staircase=False)
+        learning_rate = tf.keras.optimizers.schedules.InverseTimeDecay(0.001,10000,0.7)
+        # TODO: Define actor network parameters, critic network parameters, and optimizer
+        self.optimizer = tf.keras.optimizers.Adam(learning_rate=learning_rate)
+        self.policyLayer1 = tf.keras.layers.Dense(1024, activation='relu')
+        self.policyLayer2 = tf.keras.layers.Dense(512, activation='relu')
+        self.policyLayer3 = tf.keras.layers.Dense(num_actions, activation='softmax')
+
+        # Value Feed Forward Network
+        self.value_net_1 = tf.keras.layers.Dense(1024, activation='relu') 
+        self.value_net_2 = tf.keras.layers.Dense(1) # don't apply softmax since the output of the critic network is values
+
+        self.value_stepsize = 0.01 
+        self.policy_stepsize = 0.00005
+        self.momentum = 0.9 
+        self.batch_size = 4096
+        self.mini_batch_size = 256
+        self.epochs = 1 
+        self.norm_adv_clip = 0.2
+        self.ratio_clip = 0.2
+        self.td_lambda = 0.95
+        
+
+    def call(self, states):
+        """
+        Performs the forward pass on a batch of states to generate the action probabilities.
+        This returns a policy tensor of shape [episode_length, num_actions], where each row is a
+        probability distribution over actions for each state.
+
+        :param states: An [episode_length, state_size] dimensioned array
+        representing the history of states of an episode
+        :return: A [episode_length,num_actions] matrix representing the probability distribution over actions
+        for each state in the episode
+        """
+        # TODO: implement this!
+        layer1 = self.policyLayer1(states)
+        layer2 = self.policyLayer2(layer1)
+        logits = self.policyLayer3(layer2)
+        return logits
+
+    def value_function(self, states):
+        """
+        Performs the forward pass on a batch of states to calculate the value function, to be used as the
+        critic in the loss function.
+
+        :param states: An [episode_length, state_size] dimensioned array representing the history of states
+        of an episode.
+        :return: A [episode_length] matrix representing the value of each state.
+        """
+        # TODO: implement this :D
+        layer1 = self.value_net_1(states)
+        layer2 = self.value_net_2(layer1)
+        # print("value_function returns: ", layer2)
+        return layer2
+    
+    def custom_compute_batch_vals(self, agent, start_idx, end_idx):
+        states = agent.replay_buffer.get_all("states")[start_idx:end_idx]
+
+        idx = np.array(list(range(start_idx, end_idx)))
+        is_end = agent.replay_buffer.is_path_end(idx)
+        is_fail = agent.replay_buffer.check_terminal_flag(idx, Env.Terminate.Fail)
+        is_succ = agent.replay_buffer.check_terminal_flag(idx, Env.Terminate.Succ)
+        is_fail = np.logical_and(is_end, is_fail)
+        is_succ = np.logical_and(is_end, is_succ)
+
+        layer1 = self.value_net_1(states)
+        vals = self.value_net_2(layer1)
+        vals[is_fail] = self.val_fail
+        vals[is_succ] = self.val_succ
+
+        return vals
+    
+    def custom_compute_batch_new_vals(self, agent, start_idx, end_idx, val_buffer):
+        rewards = agent.replay_buffer.get_all("rewards")[start_idx:end_idx]
+        print("val_buffer: ", val_buffer)
+        if agent.discount == 0:
+          new_vals = rewards.copy()
+        else:
+          new_vals = np.zeros_like(val_buffer)
+
+          curr_idx = start_idx
+          while curr_idx < end_idx:
+            idx0 = curr_idx - start_idx
+            idx1 = agent.replay_buffer.get_path_end(curr_idx) - start_idx
+            r = rewards[idx0:idx1]
+            v = val_buffer[idx0:(idx1 + 1)]
+
+            new_vals[idx0:idx1] = compute_return(r, agent.discount, agent.td_lambda, v)
+            curr_idx = idx1 + start_idx + 1
+
+        return new_vals
+
+    def loss(self, states, actions, discounted_rewards):
+        """
+        Computes the loss for the agent. Refer to the lecture slides referenced in the handout to see how this is done.
+
+        Remember that the loss is similar to the loss as in part 1, with a few specific changes.
+
+        1) In your actor loss, instead of element-wise multiplying with discounted_rewards, you want to element-wise multiply with your advantage. 
+        See handout/slides for definition of advantage.
+        
+        2) In your actor loss, you must use tf.stop_gradient on the advantage to stop the loss calculated on the actor network 
+        from propagating back to the critic network.
+        
+        3) See handout/slides for how to calculate the loss for your critic network.
+
+        :param states: A batch of states of shape (episode_length, state_size)
+        :param actions: History of actions taken at each timestep of the episode (represented as an [episode_length] array)
+        :param discounted_rewards: Discounted rewards throughout a complete episode (represented as an [episode_length] array)
+        :return: loss, a TensorFlow scalar
+        """
+        # TODO: implement this :)
+        # Hint: use tf.gather_nd (https://www.tensorflow.org/api_docs/python/tf/gather_nd) to get the probabilities of the actions taken by the model
+        
+        states = tf.convert_to_tensor(states)
+        value_matrix = self.value_function(tf.cast(states,tf.float32))
+
+        discounted_rewards = tf.convert_to_tensor(discounted_rewards)
+        advantage = tf.math.subtract(discounted_rewards,tf.squeeze(value_matrix))
+
+        print("advantage: ", advantage)
+
+        ### ACTOR LOSS ##########
+        indices = np.arange(len(states))
+        actions = tf.convert_to_tensor(np.stack((indices,np.asarray(actions)),axis=1))
+
+        # use the model's call function to get the action probabilities
+        policy_matrix = self.call(tf.cast(states,tf.float32))   
+        
+        action_probabilities = tf.gather_nd(policy_matrix, actions)
+        log_probs = tf.math.log(action_probabilities)
+        # Call stop_gradient so we don’t backprop through the value network while computing gradients for the actor
+        dicount_probs = tf.math.multiply(log_probs, tf.stop_gradient(advantage))
+        # sum_tensor = tf.math.reduce_sum(dicount_probs)
+
+        actor_loss = tf.math.multiply(dicount_probs, -1)
+
+        
+        ##### CRITIC LOSS #######
+        critic_loss = tf.math.square(advantage) 
+
+        final_loss = tf.math.reduce_sum(tf.math.add(actor_loss,critic_loss))
+        # print("final_loss: ", final_loss)
+        return final_loss
+
