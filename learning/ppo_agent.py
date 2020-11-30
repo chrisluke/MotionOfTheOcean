@@ -221,11 +221,6 @@ class PPOAgent(RLAgent):
     if (self._exp_action):
       flags = flags | self.EXP_ACTION_FLAG
     return flags
-  def _log_val(self, s):
-    val = self._eval_critic(s)
-    norm_val = self.val_norm.normalize(val)
-    self.world.env.log_val(self.id, norm_val[0])
-    return
 
   def _build_replay_buffer(self, buffer_size):
     super()._build_replay_buffer(buffer_size)
@@ -290,22 +285,26 @@ class PPOAgent(RLAgent):
     return
   
   def _build_net_actor(self, init_output_scale):
-        input_tfs = [self.s_tf]
+        norm_s_tf = self.s_norm.normalize_tf(self.s_tf)
+        input_tfs = [norm_s_tf]
         
         h = build_net( input_tfs)
         norm_a_tf = tf.layers.dense(inputs=h, units=self.get_action_size(), activation=None,
                                 kernel_initializer=tf.random_uniform_initializer(minval=-init_output_scale, maxval=init_output_scale))
         
-        return norm_a_tf
+        a_tf = self.a_norm.unnormalize_tf(norm_a_tf)
+        return a_tf
     
   def _build_net_critic(self):
-        input_tfs = [self.s_tf]
+        norm_s_tf = self.s_norm.normalize_tf(self.s_tf)
+        input_tfs = [norm_s_tf]
         
         h = build_net(input_tfs)
         norm_val_tf = tf.layers.dense(inputs=h, units=1, activation=None,
                                 kernel_initializer=TFUtil.xavier_initializer);
 
-        val_tf = tf.reshape(norm_val_tf, [-1])
+        norm_val_tf = tf.reshape(norm_val_tf, [-1])
+        val_tf = self.val_norm.unnormalize_tf(norm_val_tf)
         return val_tf
 
   def _build_losses(self, json_data):
@@ -314,14 +313,17 @@ class PPOAgent(RLAgent):
     critic_weight_decay = 0 if (
         self.CRITIC_WEIGHT_DECAY_KEY not in json_data) else json_data[self.CRITIC_WEIGHT_DECAY_KEY]
 
-    self.critic_loss_tf = 0.5 * tf.reduce_mean(tf.square((self.tar_val_tf) - (self.critic_tf)))
+    norm_val_diff = self.val_norm.normalize_tf(self.tar_val_tf) - self.val_norm.normalize_tf(
+        self.critic_tf)
+    self.critic_loss_tf = 0.5 * tf.reduce_mean(tf.square(norm_val_diff))
 
     if (critic_weight_decay != 0):
       self.critic_loss_tf += critic_weight_decay * self._weight_decay_loss('main/critic')
 
-    norm_tar_a_tf = (self.a_tf)
+    norm_tar_a_tf = self.a_norm.normalize_tf(self.a_tf)
+    self._norm_a_mean_tf = self.a_norm.normalize_tf(self.a_mean_tf)
 
-    self.logp_tf = TFUtil.calc_logp_gaussian(norm_tar_a_tf, self.a_mean_tf,
+    self.logp_tf = TFUtil.calc_logp_gaussian(norm_tar_a_tf, self._norm_a_mean_tf,
                                              self.norm_a_std_tf)
     ratio_tf = tf.exp(self.logp_tf - self.old_logp_tf)
     actor_loss0 = self.adv_tf * ratio_tf
@@ -331,7 +333,7 @@ class PPOAgent(RLAgent):
 
     norm_a_bound_min = self.a_norm.normalize(self.a_bound_min)
     norm_a_bound_max = self.a_norm.normalize(self.a_bound_max)
-    a_bound_loss = TFUtil.calc_bound_loss(self.a_mean_tf, norm_a_bound_min, norm_a_bound_max)
+    a_bound_loss = TFUtil.calc_bound_loss(self._norm_a_mean_tf, norm_a_bound_min, norm_a_bound_max)
     self.actor_loss_tf += a_bound_loss
 
     if (actor_weight_decay != 0):
@@ -500,7 +502,9 @@ class PPOAgent(RLAgent):
   def update(self, timestep):
     if self.need_new_action():
       # print("update_new_action!!!")
-      self._update_new_action()
+      state = self.world.env.record_state(self.id)
+      a, logp = self._decide_action(s=state)
+      self._update_new_action(state, a, logp)
 
     if (self._mode == self.Mode.TRAIN and self.enable_training):
       self._update_counter += timestep
@@ -514,29 +518,25 @@ class PPOAgent(RLAgent):
 
     return
   
-  def _update_new_action(self):
-        s = self._record_state()
+  def _update_new_action(self,state,a,logp):
         g = self._record_goal()
 
         if not (self._is_first_step()):
             r = self._record_reward()
             self.path.rewards.append(r)
         
-        a, logp = self._decide_action(s=s)
+        
         assert len(np.shape(a)) == 1
         assert len(np.shape(logp)) <= 1
 
         flags = self._record_flags()
         self._apply_action(a)
 
-        self.path.states.append(s)
+        self.path.states.append(state)
         self.path.actions.append(a)
         self.path.goals.append(g)
         self.path.logps.append(logp)
         self.path.flags.append(flags)
-        
-        if self._enable_draw():
-            self._log_val(s)
         
         return
 
@@ -548,7 +548,7 @@ class PPOAgent(RLAgent):
     if (self.replay_buffer_initialized):
       if (self._valid_train_step()):
         prev_iter = self.iter
-        iters = self._get_iters_per_update()
+        iters = 1
         avg_train_return = MPIUtil.reduce_avg(self.train_return)
 
         for i in range(iters):
@@ -600,9 +600,6 @@ class PPOAgent(RLAgent):
       self._init_mode_train_end()
 
     return
-
-  def _get_iters_per_update(self):
-    return 1
 
   def _valid_train_step(self):
     samples = self.replay_buffer.get_current_size()
