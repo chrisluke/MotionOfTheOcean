@@ -19,7 +19,7 @@ Use reinforcement learning to train a simulated humanoid to imitate a variety of
 brew install mpich
 ```
 
-## Training Models:
+## Training Models with Tensorflow 1.14.0
 To train a policy, use `mpi_run.py` by specifying an argument file and the number of worker processes.
 For example,
 ```
@@ -37,6 +37,20 @@ A number of argument files are already provided in `args/` for the different ski
 To run your own policies, take one of the `run_[something]_args.txt` files and specify
 the policy you want to run with `--model_file`. Make sure that the reference motion `--motion_file`
 corresponds to the motion that your policy was trained for, otherwise the policy will not run properly.
+
+## Training Models with Tensorflow 2.3.0
+```
+python3 ppo_example.py --arg_file train_humanoid3d_walk_args.txt --num_workers 4
+```
+
+*NOTE* This file does not follow the paper exactly. It is based on this [Medium article.](https://towardsdatascience.com/proximal-policy-optimization-ppo-with-tensorflow-2-x-89c9430ecc26)
+
+I believe one of the issues is where it calls 
+```
+prob = agentoo7.actor(np.array([state]))
+probs.append(prob[0])
+```
+This is wrong because the actor is not actually returning probablities. It is returning an action, which is a Tensor of size 36. This size makes sense because the humanoid has 36 Action Parameters. 
 
 ## Running Pre-Trained Models:
 Once you have installed the dependencies, you can run a bunch of pre-trained models. For example, you 
