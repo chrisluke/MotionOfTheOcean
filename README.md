@@ -39,6 +39,7 @@ the policy you want to run with `--model_file`. Make sure that the reference mot
 corresponds to the motion that your policy was trained for, otherwise the policy will not run properly.
 
 ## Training Models with Tensorflow 2.3.0
+The ppo_example.py file has a version of the code that uses Tensorflow 2.3.0. You can run the training process with this command:
 ```
 python3 ppo_example.py --arg_file train_humanoid3d_walk_args.txt --num_workers 4
 ```
