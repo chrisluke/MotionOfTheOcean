@@ -170,11 +170,14 @@ class custom_critic(tf.keras.Model):
   def __init__(self):
     super().__init__()
     self.d1 = tf.keras.layers.Dense(1024,activation='relu')
+    self.d2 = tf.keras.layers.Dense(512,activation='relu')
+    # TODO: there should be another layer here 
     self.v = tf.keras.layers.Dense(1, activation = None)
 
   def call(self, input_data):
     x = self.d1(input_data)
-    v = self.v(x)
+    layer2 = self.d2(x)
+    v = self.v(layer2)
     return v
     
 
@@ -184,7 +187,7 @@ class custom_actor(tf.keras.Model):
     self.num_actions = 36
     self.d1 = tf.keras.layers.Dense(1024,activation='relu')
     self.d2 = tf.keras.layers.Dense(512, activation='relu')
-    self.a = tf.keras.layers.Dense(self.num_actions, activation='softmax')
+    self.a = tf.keras.layers.Dense(self.num_actions, activation='softmax') # should this have softmax? The paper says it shouldn't
 
   def call(self, input_data):
     # print("input_data",input_data)
@@ -458,6 +461,8 @@ if __name__ == '__main__':
 
 
       ########################### THIS LINE THAT CALLS PROB IS WRONG ###########
+      # The action from the policy specifies target orientations for PD controllers
+      # at each joint. IT DOES NOT SPECIFY PROBABILITIES!
       prob = agentoo7.actor(np.array([state]))
       probs.append(prob[0])
       values.append(value[0][0])
