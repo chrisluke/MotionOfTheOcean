@@ -24,6 +24,7 @@ from pybullet_utils.logger import Logger
 import os
 import json
 
+save_name = ''
 
 class RLWorld(object):
 
@@ -375,6 +376,10 @@ def build_arg_parser(args):
     succ = arg_parser.load_file(path)
     Logger.print2(arg_file)
     assert succ, Logger.print2('Failed to load args from: ' + arg_file)
+  
+  # update global variable to use when saving the models
+  global save_name
+  save_name = arg_file.replace('run_humanoid3d_','').replace('train_humanoid3d_','').replace('_args.txt','')
   return arg_parser
 
 def build_world(args, enable_draw):
@@ -484,8 +489,8 @@ if __name__ == '__main__':
     avg_rewards_list.append(avg_reward)
     if avg_reward > best_reward:
           print('Saving Model -- reward improved to: ' + str(avg_reward))
-          agentoo7.actor.save('Saved_Models/model_actor_{}_{}'.format(s, avg_reward), save_format='tf')
-          agentoo7.critic.save('Saved_Models/model_critic_{}_{}'.format(s, avg_reward), save_format='tf')
+          agentoo7.actor.save('Saved_Models/{}_model_actor'.format(save_name), save_format='tf')
+          agentoo7.critic.save('Saved_Models/{}_model_critic'.format(save_name), save_format='tf')
           best_reward = avg_reward
     if best_reward == 200:
           target = True
