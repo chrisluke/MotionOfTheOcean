@@ -298,15 +298,33 @@ def test_reward(env):
     done = world.env.is_episode_end()
   return total_reward_count
 
-
-def process_history(states, actions, rewards, done, values, discount_factor, gamma):
-    g = 0
+# This is the GAE function. It measures how much better off the model can be by taking 
+# a particular action when in a particular state. It uses the rewards that we collected
+# at each time step and calculates how much of an advantage we were able to obtain by 
+# taking the action that we took. 
+# 
+# So if we took a good action, we want to calculate how much better off we were by taking 
+# that action, not only in the short run but also over a longer period of time. This way, 
+# even if we do not get good rewards in the next time step after the action we tool, 
+# we still look at few time steps after that action into the longer future to see how 
+# out model performed in the long run
+def advantage_estimation(states, actions, rewards, done, values, discount_factor, gamma):
+    # initialize advantage and empty list
+    gae = 0
     returns = []
+    # loop backwards through the rewards
     for i in reversed(range(len(rewards))):
+       # Define delta
+       # The "done" variable can be thought of as a mask value. If the episode is over then
+       # the next state in the batch will be from a newly restarted game so we do not want 
+       # to consider that and therefore mask value is taken as 0
        delta = rewards[i] + gamma * values[i + 1] * done[i] - values[i]
-       g = delta + gamma * discount_factor * dones[i] * g
-       returns.append(g + values[i])
+       # update gae
+       gae = delta + gamma * discount_factor * dones[i] * gae
+       # append the return to the list of returns
+       returns.append(gae + values[i])
 
+    # reverse the list of returns to restore the original order
     returns.reverse()
     adv = np.array(returns, dtype=np.float32) - values[:-1]
     adv = (adv - np.mean(adv)) / (np.std(adv) + 1e-10)
@@ -448,7 +466,7 @@ if __name__ == '__main__':
     np.reshape(probs, (len(probs),agentoo7.num_actions))
     probs = np.stack(probs, axis=0)
 
-    states, actions,returns, adv  = process_history(states, actions, rewards, dones, values, agentoo7.discount_factor, agentoo7.gamma)
+    states, actions,returns, adv  = advantage_estimation(states, actions, rewards, dones, values, agentoo7.discount_factor, agentoo7.gamma)
 
     for epocs in range(1):
         al,cl = agentoo7.learn(states, actions, adv, probs, returns)
