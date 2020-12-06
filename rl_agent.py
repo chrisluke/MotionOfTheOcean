@@ -132,6 +132,7 @@ class RLAgent(ABC):
         assert False, Logger.print2("Unsupported RL agent mode" + str(self._mode))
 
       self._update_mode()
+      print("_update_mode")
     return
 
   def has_goal(self):
@@ -413,24 +414,6 @@ class RLAgent(ABC):
       val_succ = r_succ / (1.0 - discount)
 
     return val_fail, val_succ
-
-  def _update_iter(self, iter):
-    if (self._enable_output() and self.iter % self.output_iters == 0):
-      output_path = self._get_output_path()
-      output_dir = os.path.dirname(output_path)
-      if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-      self.save_model(output_path)
-
-    if (self._enable_int_output() and self.iter % self.int_output_iters == 0):
-      int_output_path = self._get_int_output_path()
-      int_output_dir = os.path.dirname(int_output_path)
-      if not os.path.exists(int_output_dir):
-        os.makedirs(int_output_dir)
-      self.save_model(int_output_path)
-
-    self.iter = iter
-    return
 
   def _enable_draw(self):
     return self.world.env.enable_draw
