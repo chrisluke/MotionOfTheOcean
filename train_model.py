@@ -224,6 +224,7 @@ class CustomAgent(RLAgent):
         # return int(action.numpy()[0])
         return action.numpy()[0]
     
+    # TODO: WE NEED TO ADJUST THIS LOSS FUNCTION TO MATCH THE PAPER
     def actor_loss(self, probs, actions, adv, old_probs, closs):
         
         probability = probs      
@@ -269,6 +270,7 @@ class CustomAgent(RLAgent):
             v = tf.reshape(v, (len(v),))
             td = tf.math.subtract(discnt_rewards, v)
             c_loss = 0.5 * kls.mean_squared_error(discnt_rewards, v)
+            # TODO: We need to figure out this loss function for the actor
             a_loss = self.actor_loss(p, actions, adv, old_probs, c_loss)
             
         grads1 = tape1.gradient(a_loss, self.actor.trainable_variables)
