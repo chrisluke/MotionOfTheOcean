@@ -11,7 +11,7 @@ from tensorflow import keras
 import gym
 import tensorflow_probability as tfp
 import tensorflow.keras.losses as kls
-from learning.rl_agent import RLAgent
+from rl_agent import RLAgent
 import pybullet_utils.mpi_util as MPIUtil
 from pybullet_envs.deep_mimic.env.env import Env
 from custom_reward import getRewardCustom
