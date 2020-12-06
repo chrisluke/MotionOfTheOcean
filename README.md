@@ -4,13 +4,11 @@ Use reinforcement learning to train a simulated humanoid to imitate a variety of
 
 
 ## Dependencies
-``pip3 install gast==0.2.2``
+``pip3 install gast==0.3.3``
 
 ``pip3 install pybullet``
 
-``pip install tensorflow==1.14``
-
-``pip install pandas``
+``pip install tensorflow==2.3.1``
 
 ``OpenGL >= 3.2``
 
@@ -19,32 +17,24 @@ Use reinforcement learning to train a simulated humanoid to imitate a variety of
 brew install mpich
 ```
 
+## arg_files
+A number of argument files are already provided in `args/` for the different skills. 
+`train_[something]_args.txt` files are setup for `train_model.py` to train a policy and 
+`run_[something]_args.txt` files are setup for `run_visualizer.py` to run the corresponding 
+policy located in `Saved_Models/`. Make sure that the reference motion `--motion_file` 
+corresponds to the motion that your policy was trained for, otherwise the policy will not run properly.
+
 ## Training Models with Tensorflow 1.14.0
 To train a policy, use `mpi_run.py` by specifying an argument file and the number of worker processes.
 For example,
 ```
-python3 mpi_run.py --arg_file train_humanoid3d_walk_args.txt --num_workers 16
+python3 train_model.py --arg_file train_humanoid3d_walk_args.txt --num_workers 4
 ```
-will train a policy to perform a spinkick using 4 workers. As training progresses, it will regularly
-print out statistics and log them to `output/` along with a `.ckpt` of the latest policy.
-It typically takes about 60 millions samples to train one policy, which can take a day
-when training with 16 workers. 16 workers is likely the max number of workers that the
-framework can support, and it can get overwhelmed if too many workers are used.
+will train a policy to walk using 4 workers. It typically takes about 60 millions samples 
+to train one policy, which can take a day when training with 16 workers. 
 
-A number of argument files are already provided in `args/` for the different skills. 
-`train_[something]_args.txt` files are setup for `mpi_run.py` to train a policy, and 
-`run_[something]_args.txt` files are setup for `DeepMimic.py` to run one of the pretrained policies.
-To run your own policies, take one of the `run_[something]_args.txt` files and specify
-the policy you want to run with `--model_file`. Make sure that the reference motion `--motion_file`
-corresponds to the motion that your policy was trained for, otherwise the policy will not run properly.
-
-## Training Models with Tensorflow 2.3.0
-The ppo_example.py file has a version of the code that uses Tensorflow 2.3.0. You can run the training process with this command:
-```
-python3 ppo_example.py --arg_file train_humanoid3d_walk_args.txt --num_workers 4
-```
-
-*NOTE* This file does not follow the paper exactly. It is based on this [Medium article.](https://towardsdatascience.com/proximal-policy-optimization-ppo-with-tensorflow-2-x-89c9430ecc26)
+*NOTE* This our code does not follow the paper exactly. It is based on this 
+[Medium article.](https://towardsdatascience.com/proximal-policy-optimization-ppo-with-tensorflow-2-x-89c9430ecc26)
 
 I believe one of the issues is where it calls 
 ```
@@ -53,29 +43,18 @@ probs.append(prob[0])
 ```
 This is wrong because the actor is not actually returning probablities. It is returning an action, which is a Tensor of size 36. This size makes sense because the humanoid has 36 Action Parameters. 
 
-## Running Pre-Trained Models:
-Once you have installed the dependencies, you can run a bunch of pre-trained models. For example, you 
-can run a pre-trained humanoid model that jumps by using the command: 
 
-```
-python3 testrl.py --arg_file run_humanoid3d_walk_args.txt
-```
-
-Note: In order for the library to work properly, you need to make sure you are using Tensorflow 1.14.
-
-## Running Visualizer on Our Own Models:
-Copy the model from the output folder to ``data/policies/humanoid3d``. 
-
-Rename the file you just added to match that of the pre-trained model (such as ``humanoid3d_walk.ckpt.index`` 
-and ``humanoid3d_walk.ckpt.data-00000-of-00001``). Now you can run the visualizer with the same command as you 
-would have used for the pre-trained models:
+## Running Visualizer on Our Models:
+You can visualize how the model performs by running the `run_visualizer.py` file.
+For example:
 
 ``` 
 python3 testrl.py --arg_file run_humanoid3d_walk_args.txt
 ```
+will run the visualizer for the model in `Saved_Models/` that was trained against the walking motion capture data.
 
 
-## Interface
+## Visualizer Interface 
 - ctrl + click and drag will pan the camera
 - left click and drag will apply a force on the character at a particular location
 - scrollwheel will zoom in/out
