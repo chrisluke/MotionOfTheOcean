@@ -103,22 +103,6 @@ class RLAgent(ABC):
     self.path.clear()
     return
 
-  def update(self, timestep):
-    if self.need_new_action():
-      #print("update_new_action!!!")
-      self._update_new_action()
-
-    if (self._mode == self.Mode.TRAIN and self.enable_training):
-      self._update_counter += timestep
-
-      while self._update_counter >= self.update_period:
-        self._train()
-        self._update_exp_params()
-        self.world.env.set_sample_count(self._total_sample_count)
-        self._update_counter -= self.update_period
-
-    return
-
   def end_episode(self):
     if (self.path.pathlength() > 0):
       self._end_path()
@@ -176,21 +160,6 @@ class RLAgent(ABC):
 
   def need_new_action(self):
     return self.world.env.need_new_action(self.id)
-
-#   def _build_normalizers(self):
-#     self.s_norm = Normalizer(self.get_state_size(),
-#                              self.world.env.build_state_norm_groups(self.id))
-#     self.s_norm.set_mean_std(-self.world.env.build_state_offset(self.id),
-#                              1 / self.world.env.build_state_scale(self.id))
-
-#     self.g_norm = Normalizer(self.get_goal_size(), self.world.env.build_goal_norm_groups(self.id))
-#     self.g_norm.set_mean_std(-self.world.env.build_goal_offset(self.id),
-#                              1 / self.world.env.build_goal_scale(self.id))
-
-#     self.a_norm = Normalizer(self.world.env.get_action_size())
-#     self.a_norm.set_mean_std(-self.world.env.build_action_offset(self.id),
-#                              1 / self.world.env.build_action_scale(self.id))
-#     return
 
   def _build_bounds(self):
     self.a_bound_min = self.world.env.build_action_bound_min(self.id)
@@ -281,34 +250,6 @@ class RLAgent(ABC):
     self.path.states.append(s)
     self.path.goals.append(g)
     self.path.terminate = self.world.env.check_terminate(self.id)
-
-    return
-
-  def _update_new_action(self):
-    #print("_update_new_action!")
-    s = self._record_state()
-    #np.savetxt("pb_record_state_s.csv", s, delimiter=",")
-    g = self._record_goal()
-
-    if not (self._is_first_step()):
-      r = self._record_reward()
-      self.path.rewards.append(r)
-
-    a, logp = self._decide_action(s=s, g=g)
-    assert len(np.shape(a)) == 1
-    assert len(np.shape(logp)) <= 1
-
-    flags = self._record_flags()
-    self._apply_action(a)
-
-    self.path.states.append(s)
-    self.path.goals.append(g)
-    self.path.actions.append(a)
-    self.path.logps.append(logp)
-    self.path.flags.append(flags)
-
-    if self._enable_draw():
-      self._log_val(s, g)
 
     return
 

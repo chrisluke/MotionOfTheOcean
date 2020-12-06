@@ -105,9 +105,6 @@ class RLWorld(object):
     return
 
   def update(self, timestep):
-    # print("world update!\n")
-    ###################################################
-    # self._update_agents(timestep)
     self._update_env(timestep)
 
     # compute next state
@@ -132,13 +129,6 @@ class RLWorld(object):
 
   def _update_env(self, timestep):
     self.env.update(timestep)
-    return
-
-  def _update_agents(self, timestep):
-    #print("len(agents)=",len(self.agents))
-    for agent in self.agents:
-      if (agent is not None):
-        agent.update(timestep)
     return
 
   def _reset_env(self):
