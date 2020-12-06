@@ -49,7 +49,7 @@ You can visualize how the model performs by running the `run_visualizer.py` file
 For example:
 
 ``` 
-python3 testrl.py --arg_file run_humanoid3d_walk_args.txt
+python3 run_visualizer.py --arg_file run_humanoid3d_walk_args.txt
 ```
 will run the visualizer for the model in `Saved_Models/` that was trained against the walking motion capture data.
 
