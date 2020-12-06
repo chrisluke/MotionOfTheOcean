@@ -3,12 +3,6 @@ import copy
 import os
 import time
 import sys
-from abc import abstractmethod
-import abc
-if sys.version_info >= (3, 4):
-  ABC = abc.ABC
-else:
-  ABC = abc.ABCMeta('ABC', (), {})
 
 from enum import Enum
 
@@ -21,7 +15,7 @@ import pybullet_utils.mpi_util as MPIUtil
 import pybullet_utils.math_util as MathUtil
 
 
-class RLAgent(ABC):
+class RLAgent():
 
   class Mode(Enum):
     TRAIN = 0
