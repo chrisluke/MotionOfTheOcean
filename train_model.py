@@ -239,7 +239,7 @@ class CustomAgent(RLAgent):
       return file_path
 
     def load_model(self, in_path):
-      self.actor = keras.models.load_model('Saved_Models/model_actor_2_63.01912871663599')
+      self.actor = keras.models.load_model(in_path)
 
     def act(self,state):
         action = self.actor(np.array([state]))

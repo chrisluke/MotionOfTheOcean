@@ -13,7 +13,7 @@
 
 --char_ctrls ct_pd
 --char_ctrl_files data/controllers/humanoid3d_ctrl.txt
---motion_file data/motions/humanoid3d_walk.txt
+--motion_file data/motions/humanoid3d_punch.txt
 --sync_char_root_pos true
 --sync_char_root_rot false
 
@@ -22,4 +22,4 @@
 
 #--output_path output
 #--int_output_path output/intermediate
---model_files data/policies/humanoid3d/humanoid3d_walk
+--model_files data/policies/humanoid3d/humanoid3d_punch.ckpt

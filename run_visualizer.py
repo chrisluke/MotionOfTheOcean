@@ -1,5 +1,5 @@
 import time
-from ppo_example import build_world, update_world
+from train_model import build_world, update_world
 import sys
 
 update_timestep = 1. / 240.
