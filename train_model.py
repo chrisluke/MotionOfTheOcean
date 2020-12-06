@@ -85,16 +85,11 @@ class RLWorld(object):
     model_files = self.arg_parser.parse_strings('model_files')
     assert (len(model_files) == 1 or len(model_files) == 0)
 
-    output_path = self.arg_parser.parse_string('output_path')
-    int_output_path = self.arg_parser.parse_string('int_output_path')
-
     
     curr_file = agent_files[0]
     curr_agent = self._build_agent(0, curr_file)
 
     if curr_agent is not None:
-      curr_agent.output_dir = output_path
-      curr_agent.int_output_dir = int_output_path
       Logger.print2(str(curr_agent))
 
       if (len(model_files) > 0):
@@ -226,18 +221,6 @@ class CustomAgent(RLAgent):
 
         self.state_size = 197
         self.num_actions = 36
-    
-    
-    def _get_int_output_path(self):
-      assert (self.int_output_dir != '')
-      file_path = self.int_output_dir + (
-          '/agent{:d}_models/agent{:d}_int_model_{:010d}.ckpt').format(self.id, self.id, self.iter)
-      return file_path
-    
-    def _get_output_path(self):
-      assert (self.output_dir != '')
-      file_path = self.output_dir + '/agent' + str(self.id) + '_model.ckpt'
-      return file_path
 
     def load_model(self, in_path):
       self.actor = keras.models.load_model(in_path)
@@ -393,8 +376,6 @@ def build_world(args, enable_draw):
   print("motion_file build=", motion_file)
   bodies = arg_parser.parse_ints("fall_contact_bodies")
   print("bodies=", bodies)
-  int_output_path = arg_parser.parse_string("int_output_path")
-  print("int_output_path=", int_output_path)
   agent_files = os.getcwd() + "/" + arg_parser.parse_string("agent_files")
 
   AGENT_TYPE_KEY = "AgentType"

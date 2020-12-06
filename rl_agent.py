@@ -69,8 +69,6 @@ class RLAgent(ABC):
     self._need_normalizer_update = True
     self._total_sample_count = 0
 
-    self._output_dir = ""
-    self._int_output_dir = ""
     self.output_iters = 100
     self.int_output_iters = 100
 
@@ -100,26 +98,6 @@ class RLAgent(ABC):
         self.id, self.NAME, action_space_str[action_space_str.rfind('.') + 1:],
         self.get_state_size(), self.get_goal_size(), self.get_action_size())
     return "{\n" + info_str + "\n}"
-
-  def get_output_dir(self):
-    return self._output_dir
-
-  def set_output_dir(self, out_dir):
-    self._output_dir = out_dir
-    if (self._output_dir != ""):
-      self.logger.configure_output_file(out_dir + "/agent" + str(self.id) + "_log.txt")
-    return
-
-  output_dir = property(get_output_dir, set_output_dir)
-
-  def get_int_output_dir(self):
-    return self._int_output_dir
-
-  def set_int_output_dir(self, out_dir):
-    self._int_output_dir = out_dir
-    return
-
-  int_output_dir = property(get_int_output_dir, set_int_output_dir)
 
   def reset(self):
     self.path.clear()
@@ -486,78 +464,6 @@ class RLAgent(ABC):
     if self.has_goal():
       goals = np.array(path.goals)
       self.g_norm.record(goals)
-
-    return
-
-  def _update_normalizers(self):
-    self.s_norm.update()
-
-    if self.has_goal():
-      self.g_norm.update()
-    return
-
-  def _train(self):
-    samples = self.replay_buffer.total_count
-    self._total_sample_count = int(MPIUtil.reduce_sum(samples))
-    end_training = False
-
-    if (self.replay_buffer_initialized):
-      if (self._valid_train_step()):
-        prev_iter = self.iter
-        iters = self._get_iters_per_update()
-        avg_train_return = MPIUtil.reduce_avg(self.train_return)
-
-        for i in range(iters):
-          curr_iter = self.iter
-          wall_time = time.time() - self.start_time
-          wall_time /= 60 * 60  # store time in hours
-
-          has_goal = self.has_goal()
-          s_mean = np.mean(self.s_norm.mean)
-          s_std = np.mean(self.s_norm.std)
-          g_mean = np.mean(self.g_norm.mean) if has_goal else 0
-          g_std = np.mean(self.g_norm.std) if has_goal else 0
-
-          self.logger.log_tabular("Iteration", self.iter)
-          self.logger.log_tabular("Wall_Time", wall_time)
-          self.logger.log_tabular("Samples", self._total_sample_count)
-          self.logger.log_tabular("Train_Return", avg_train_return)
-          self.logger.log_tabular("Test_Return", self.avg_test_return)
-          self.logger.log_tabular("State_Mean", s_mean)
-          self.logger.log_tabular("State_Std", s_std)
-          self.logger.log_tabular("Goal_Mean", g_mean)
-          self.logger.log_tabular("Goal_Std", g_std)
-          self._log_exp_params()
-
-          self._update_iter(self.iter + 1)
-          self._train_step()
-
-          Logger.print2("Agent " + str(self.id))
-          self.logger.print_tabular()
-          Logger.print2("")
-
-          if (self._enable_output() and curr_iter % self.int_output_iters == 0):
-            self.logger.dump_tabular()
-
-        if (prev_iter // self.int_output_iters != self.iter // self.int_output_iters):
-          end_training = self.enable_testing()
-
-    else:
-
-      Logger.print2("Agent " + str(self.id))
-      Logger.print2("Samples: " + str(self._total_sample_count))
-      Logger.print2("")
-
-      if (self._total_sample_count >= self.init_samples):
-        self.replay_buffer_initialized = True
-        end_training = self.enable_testing()
-
-    if self._need_normalizer_update:
-      self._update_normalizers()
-      self._need_normalizer_update = self.normalizer_samples > self._total_sample_count
-
-    if end_training:
-      self._init_mode_train_end()
 
     return
 
