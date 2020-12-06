@@ -24,8 +24,8 @@ A number of argument files are already provided in `args/` for the different ski
 policy located in `Saved_Models/`. Make sure that the reference motion `--motion_file` 
 corresponds to the motion that your policy was trained for, otherwise the policy will not run properly.
 
-## Training Models with Tensorflow 1.14.0
-To train a policy, use `mpi_run.py` by specifying an argument file and the number of worker processes.
+## Training Models
+To train a policy, use `train_model.py` by specifying an argument file and the number of worker processes.
 For example,
 ```
 python3 train_model.py --arg_file train_humanoid3d_walk_args.txt --num_workers 4
