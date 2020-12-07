@@ -206,8 +206,8 @@ class CustomAgent(RLAgent):
         self.gamma = gamma
         self.discount_factor = 0.95
 
-        self.a_opt = tf.keras.optimizers.Adam(learning_rate=0.00001)
-        self.c_opt = tf.keras.optimizers.Adam(learning_rate=0.01)
+        self.a_opt = tf.keras.optimizers.Adam(learning_rate=0.00005) # policy step size of α(π) = 5 × 10^(−5)
+        self.c_opt = tf.keras.optimizers.Adam(learning_rate=0.01) #  value stepsize of α(v) = 10^(−2)
         self.actor = custom_actor()
         self.critic = custom_critic()
         self.clip_pram = 0.2
@@ -416,17 +416,17 @@ if __name__ == '__main__':
 
   tf.random.set_seed(336699)
   agentoo7 = world.agents[0]
-  steps_loop = 4096
+  ppo_steps = 4096
   mini_batches = 256
   ep_reward = []
   total_avgr = []
-  target = False 
+  target_reached = False 
   best_reward = 0
   avg_rewards_list = []
 
-
-  for s in range(steps_loop):
-    if target == True:
+  while not target_reached:
+  for s in range(ppo_steps):
+    if target_reached == True:
             break
     
     done = False
@@ -475,10 +475,8 @@ if __name__ == '__main__':
 
     states, actions,returns, adv  = advantage_estimation(states, actions, rewards, dones, values, agentoo7.discount_factor, agentoo7.gamma)
 
-    for epocs in range(1):
-        al,cl = agentoo7.learn(states, actions, adv, probs, returns)
-        # print(f"al{al}") 
-        # print(f"cl{cl}")   
+    ## Update the gradients
+    al,cl = agentoo7.learn(states, actions, adv, probs, returns)
 
     avg_reward = np.mean([test_reward(env) for _ in range(5)])
     print(f"TEST REWARD is {avg_reward}")
@@ -489,7 +487,7 @@ if __name__ == '__main__':
           agentoo7.critic.save('Saved_Models/{}_model_critic'.format(save_name), save_format='tf')
           best_reward = avg_reward
     if best_reward == 200:
-          target = True
+          target_reached = True
     # Reset the environment and the humanoid
     total_reward = 0
     steps_update_world = 0
