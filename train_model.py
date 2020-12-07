@@ -60,6 +60,7 @@ class RLWorld(object):
 
     return
 
+
   enable_training = property(get_enable_training, set_enable_training)
 
   def parse_args(self, arg_parser):
@@ -187,7 +188,7 @@ class custom_actor(tf.keras.Model):
     self.num_actions = 36
     self.d1 = tf.keras.layers.Dense(1024,activation='relu')
     self.d2 = tf.keras.layers.Dense(512, activation='relu')
-    self.a = tf.keras.layers.Dense(self.num_actions, activation='linear') # should this have softmax? The paper says it shouldn't
+    self.a = tf.keras.layers.Dense(self.num_actions, activation='softmax') # should this have softmax? The paper says it shouldn't
 
   def call(self, input_data):
     # print("input_data",input_data)
@@ -241,8 +242,8 @@ class CustomAgent(RLAgent):
                         t =  tf.constant(t)
                         op =  tf.constant(op)
                         #print(f"t{t}")
-                        #ratio = tf.math.exp(tf.math.log(pb + 1e-10) - tf.math.log(op + 1e-10))
-                        ratio = tf.math.divide(pb,op)
+                        ratio = tf.math.exp(tf.math.log(pb + 1e-10) - tf.math.log(op + 1e-10))
+                        #ratio = tf.math.divide(pb,op)
                         #print(f"ratio{ratio}")
                         s1 = tf.math.multiply(ratio,t)
                         #print(f"s1{s1}")
