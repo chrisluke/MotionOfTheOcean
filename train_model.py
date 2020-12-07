@@ -187,7 +187,7 @@ class custom_actor(tf.keras.Model):
     self.num_actions = 36
     self.d1 = tf.keras.layers.Dense(1024,activation='relu')
     self.d2 = tf.keras.layers.Dense(512, activation='relu')
-    self.a = tf.keras.layers.Dense(self.num_actions, activation='softmax') # should this have softmax? The paper says it shouldn't
+    self.a = tf.keras.layers.Dense(self.num_actions, activation='linear') # should this have softmax? The paper says it shouldn't
 
   def call(self, input_data):
     # print("input_data",input_data)
@@ -254,11 +254,13 @@ class CustomAgent(RLAgent):
         sr1 = tf.stack(sur1)
         sr2 = tf.stack(sur2)
         
-        loss = tf.math.negative(tf.reduce_mean(tf.math.minimum(sr1, sr2)) - closs + 0.001 * entropy)
+        aloss = -tf.reduce_mean(tf.math.minimum(sr1, sr2))
+        total_loss = 0.5 * closs + aloss - entropy * tf.reduce_mean(-(pb * tf.math.log(pb + 1e-10)))
+        # loss = tf.math.negative(tf.reduce_mean(tf.math.minimum(sr1, sr2)) - closs + 0.001 * entropy)
         # loss = tf.reduce_mean(tf.math.minimum(sr1, sr2)) - closs + 0.001 * entropy
 
         #print(loss)
-        return loss
+        return total_loss
 
     def learn(self, states, actions,  adv , old_probs, discnt_rewards):
         discnt_rewards = tf.reshape(discnt_rewards, (len(discnt_rewards),))
