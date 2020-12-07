@@ -205,9 +205,9 @@ class CustomAgent(RLAgent):
         self.id = id
         self.gamma = gamma
         self.discount_factor = 0.95
-
-        self.a_opt = tf.keras.optimizers.Adam(learning_rate=0.00005) # policy step size of α(π) = 5 × 10^(−5)
-        self.c_opt = tf.keras.optimizers.Adam(learning_rate=0.01) #  value stepsize of α(v) = 10^(−2)
+        
+        self.a_opt = tf.keras.optimizers.SGD(learning_rate=0.00005,momentum=0.9) # policy step size of α(π) = 5 × 10^(−5)
+        self.c_opt = tf.keras.optimizers.SGD(learning_rate=0.01,momentum=0.9) #  value stepsize of α(v) = 10^(−2)
         self.actor = custom_actor()
         self.critic = custom_critic()
         self.clip_pram = 0.2
@@ -425,7 +425,7 @@ if __name__ == '__main__':
   avg_rewards_list = []
 
   while not target_reached:
-  for s in range(ppo_steps):
+  # for s in range(ppo_steps):
     if target_reached == True:
             break
     
@@ -441,7 +441,8 @@ if __name__ == '__main__':
     values = []
     print("new episod")
 
-    for e in range(mini_batches):
+    # for e in range(mini_batches):
+    for s in range(ppo_steps):
       # world.reset()
       # print("STATE: ", state)
       action = agentoo7.act(state)
