@@ -188,7 +188,7 @@ class custom_actor(tf.keras.Model):
     self.num_actions = 36
     self.d1 = tf.keras.layers.Dense(1024,activation='relu')
     self.d2 = tf.keras.layers.Dense(512, activation='relu')
-    self.a = tf.keras.layers.Dense(self.num_actions, activation='softmax') # should this have softmax? The paper says it shouldn't
+    self.a = tf.keras.layers.Dense(self.num_actions, activation='linear') # should this have softmax? The paper says it shouldn't
 
   def call(self, input_data):
     # print("input_data",input_data)
@@ -220,13 +220,13 @@ class CustomAgent(RLAgent):
       self.actor = keras.models.load_model(in_path)
 
     def act(self,state):
-        action = self.actor(np.array([state]))
-        # prob = self.actor(np.array([state]))
-        # prob = prob.numpy()
-        # dist = tfp.distributions.Categorical(probs=prob, dtype=tf.float32)
-        # action = dist.sample()
-        # return int(action.numpy()[0])
-        return action.numpy()[0]
+        #action = self.actor(np.array([state]))
+        prob = self.actor(np.array([state]))
+        prob = prob.numpy()
+        dist = tfp.distributions.Categorical(probs=prob, dtype=tf.float32)
+        action = dist.sample(sample_shape = (1, 36))
+        return (action.numpy()[0])
+        #return action.numpy()[0]
     
     # TODO: WE NEED TO ADJUST THIS LOSS FUNCTION TO MATCH THE PAPER
     def actor_loss(self, probs, actions, adv, old_probs, closs):
@@ -412,7 +412,7 @@ def build_world(args, enable_draw):
 
 if __name__ == '__main__':
   args = sys.argv[1:]
-  enable_draw = False
+  enable_draw = True
   world = build_world(args, enable_draw)
 
   env = world.env
@@ -469,6 +469,7 @@ if __name__ == '__main__':
       # at each joint. IT DOES NOT SPECIFY PROBABILITIES!
       prob = agentoo7.actor(np.array([state]))
       probs.append(prob[0])
+      #print(np.shape(prob[0]))
       values.append(value[0][0])
       state = next_state
     
